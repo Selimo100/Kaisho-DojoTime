@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { Club, TrainingDay, Admin } from '../types';
+import type { Club, TrainingDay, Admin, Trainer } from '../types';
 import { getWeekdayName, formatTime } from '../utils/formatters';
 import {
   createTrainingDay,
@@ -11,6 +11,9 @@ import {
   deleteAdmin,
   deleteOverride,
   getOverridesByClub,
+  getAllTrainers,
+  promoteTrainerToAdmin,
+  deleteTrainer,
 } from '../lib/supabaseService';
 import { WEEKDAY_NAMES } from '../utils/formatters';
 import { useAdmin } from '../context/AdminContext';
@@ -51,6 +54,11 @@ export default function AdminPanel({
   // Collapsible Sections State
   const [isTrainingDaysOpen, setIsTrainingDaysOpen] = useState(true);
   const [isAdminManagementOpen, setIsAdminManagementOpen] = useState(false);
+  const [isTrainerManagementOpen, setIsTrainerManagementOpen] = useState(false);
+  
+  // Trainer Management State
+  const [trainers, setTrainers] = useState<Trainer[]>([]);
+  const [loadingTrainers, setLoadingTrainers] = useState(false);
   
   // Extra Training Modal State
   const [showExtraTrainingModal, setShowExtraTrainingModal] = useState(false);
@@ -81,6 +89,8 @@ export default function AdminPanel({
   useEffect(() => {
     if (isSuperAdmin) {
       loadAdmins();
+      loadTrainers();
+      loadTrainers();
     }
   }, [isSuperAdmin]);
   
@@ -90,6 +100,18 @@ export default function AdminPanel({
       setAdmins(data);
     } catch (error) {
       console.error('Error loading admins:', error);
+    }
+  };
+  
+  const loadTrainers = async () => {
+    setLoadingTrainers(true);
+    try {
+      const data = await getAllTrainers();
+      setTrainers(data);
+    } catch (error) {
+      console.error('Error loading trainers:', error);
+    } finally {
+      setLoadingTrainers(false);
     }
   };
 
@@ -230,6 +252,41 @@ export default function AdminPanel({
     if (admin.is_super_admin) return true;
     // Club-Admin kann keine anderen Admins verwalten
     return false;
+  };
+  
+  const handlePromoteToAdmin = async (trainer: Trainer, makeAsSuperAdmin: boolean) => {
+    if (!confirm(`${trainer.name} wirklich zum ${makeAsSuperAdmin ? 'Super-' : 'Club-'}Admin machen?\n\nBenutzername: ${trainer.email.split('@')[0]}\nPasswort: Bleibt gleich wie beim Trainer-Account`)) {
+      return;
+    }
+    
+    try {
+      await promoteTrainerToAdmin({ trainer, isSuperAdmin: makeAsSuperAdmin });
+      await loadAdmins();
+      await loadTrainers(); // Reload trainer list to update "Bereits Admin" badges
+      alert(`✅ ${trainer.name} ist jetzt ${makeAsSuperAdmin ? 'Super-' : 'Club-'}Admin!\n\nBenutzername: ${trainer.email.split('@')[0]}\nPasswort: Gleich wie beim Trainer-Account`);
+    } catch (error: any) {
+      console.error('Error promoting trainer:', error);
+      if (error.message?.includes('duplicate') || error.code === '23505') {
+        alert('⚠️ Dieser Benutzer ist bereits Admin!');
+      } else {
+        alert('Fehler beim Erstellen des Admin-Accounts');
+      }
+    }
+  };
+
+  const handleDeleteTrainer = async (trainer: Trainer) => {
+    if (!confirm(`${trainer.name} wirklich löschen?\n\n⚠️ ACHTUNG: Alle Trainingseintragungen dieses Trainers werden ebenfalls gelöscht!`)) {
+      return;
+    }
+    
+    try {
+      await deleteTrainer(trainer.id);
+      await loadTrainers();
+      alert(`✅ ${trainer.name} wurde gelöscht.`);
+    } catch (error: any) {
+      console.error('Error deleting trainer:', error);
+      alert('Fehler beim Löschen des Trainers');
+    }
   };
 
   return (
@@ -577,6 +634,100 @@ export default function AdminPanel({
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+          </div>
+        )}
+        
+        {/* Trainer Management Section - Only for Super Admins */}
+        {isSuperAdmin && (
+          <div className="border border-white/20 rounded-xl overflow-hidden backdrop-blur-sm bg-white/5">
+            <button
+              onClick={() => setIsTrainerManagementOpen(!isTrainerManagementOpen)}
+              className="w-full flex justify-between items-center p-3 md:p-4 hover:bg-white/10 transition-all active:scale-[0.99]"
+            >
+              <h3 className="text-base md:text-lg font-bold text-white">
+                👤 Trainer zu Admin machen
+              </h3>
+              <span className="text-2xl md:text-3xl text-white/80 font-bold">
+                {isTrainerManagementOpen ? '−' : '+'}
+              </span>
+            </button>
+            
+            {isTrainerManagementOpen && (
+              <div className="p-3 md:p-4 border-t border-white/20">
+                <p className="text-sm text-white/80 mb-4">
+                  Wählen Sie einen Trainer aus der Liste, um ihm Admin-Rechte zu geben. Der Trainer erhält Zugriff auf das Admin-Panel.
+                </p>
+                
+                {loadingTrainers ? (
+                  <div className="text-center py-8">
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-white/30 border-t-white"></div>
+                    <p className="text-white/70 mt-3">Lade Trainer...</p>
+                  </div>
+                ) : trainers.length === 0 ? (
+                  <p className="text-white/70 text-sm">Keine Trainer gefunden.</p>
+                ) : (
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {trainers.map((trainer) => {
+                      // Prüfe ob Trainer bereits Admin ist
+                      const isAlreadyAdmin = admins.some(a => a.email === trainer.email);
+                      
+                      return (
+                        <div
+                          key={trainer.id}
+                          className={`flex flex-col md:flex-row md:justify-between md:items-center gap-2 md:gap-3 p-3 rounded-xl border transition-all ${
+                            isAlreadyAdmin 
+                              ? 'bg-green-500/10 border-green-400/30' 
+                              : 'bg-white/10 border-white/20 hover:bg-white/15'
+                          }`}
+                        >
+                          <div className="flex-1">
+                            <div className="font-bold text-white text-sm md:text-base flex items-center gap-2">
+                              {trainer.name}
+                              {isAlreadyAdmin && (
+                                <span className="text-xs bg-green-500/30 text-green-200 px-2 py-1 rounded-lg font-semibold">
+                                  ✓ Bereits Admin
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs md:text-sm text-white/70 font-medium">
+                              {trainer.email}
+                            </div>
+                          </div>
+                          
+                          <div className="flex gap-2">
+                            {!isAlreadyAdmin ? (
+                              <>
+                                <button
+                                  onClick={() => handlePromoteToAdmin(trainer, false)}
+                                  className="px-3 py-2 bg-blue-500/80 hover:bg-blue-600 text-white text-xs font-semibold rounded-lg transition-all active:scale-95 shadow-md"
+                                  title="Club-Admin (nur für diesen Verein)"
+                                >
+                                  👤 Club-Admin
+                                </button>
+                                <button
+                                  onClick={() => handlePromoteToAdmin(trainer, true)}
+                                  className="px-3 py-2 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white text-xs font-semibold rounded-lg transition-all active:scale-95 shadow-md"
+                                  title="Super-Admin (alle Vereine)"
+                                >
+                                  ⭐ Super-Admin
+                                </button>
+                              </>
+                            ) : null}
+                            <button
+                              onClick={() => handleDeleteTrainer(trainer)}
+                              className="px-3 py-2 bg-red-500/80 hover:bg-red-600 text-white text-xs font-semibold rounded-lg transition-all active:scale-95 shadow-md"
+                              title="Trainer löschen"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -93,7 +93,7 @@ export default function AuthModal({ clubId, clubName, onClose }: AuthModalProps)
           {!isLogin && (
             <div>
               <label className="block text-sm font-semibold text-white mb-2">
-                Name *
+                Benutzername *
               </label>
               <input
                 type="text"

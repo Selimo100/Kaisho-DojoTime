@@ -8,6 +8,7 @@ import type {
   Admin,
   AdminLoginInput,
   CreateAdminInput,
+  Trainer,
 } from '../types';
 
 // ========== CLUBS ==========
@@ -218,6 +219,32 @@ export async function createTrainingEntry(
 
 // ========== TRAINERS (Authentication) ==========
 
+export async function getAllTrainers(): Promise<Trainer[]> {
+  const { data, error } = await supabase
+    .from('trainers')
+    .select('*')
+    .order('name');
+
+  if (error) {
+    console.error('Error fetching trainers:', error);
+    throw error;
+  }
+
+  return data || [];
+}
+
+export async function deleteTrainer(trainerId: string): Promise<void> {
+  const { error } = await supabase
+    .from('trainers')
+    .delete()
+    .eq('id', trainerId);
+
+  if (error) {
+    console.error('Error deleting trainer:', error);
+    throw error;
+  }
+}
+
 export async function registerTrainer(input: {
   email: string;
   name: string;
@@ -397,4 +424,22 @@ export async function deleteAdmin(id: number): Promise<void> {
     .eq('id', id);
 
   if (error) throw error;
+}
+
+export async function promoteTrainerToAdmin(input: {
+  trainer: Trainer;
+  isSuperAdmin: boolean;
+}): Promise<number> {
+  // Verwende RPC-Funktion um Passwort-Hash zu kopieren
+  const { data, error } = await supabase.rpc('promote_trainer_to_admin', {
+    p_trainer_id: input.trainer.id,
+    p_is_super_admin: input.isSuperAdmin,
+  });
+
+  if (error) {
+    console.error('Error promoting trainer to admin:', error);
+    throw error;
+  }
+
+  return data as number;
 }
