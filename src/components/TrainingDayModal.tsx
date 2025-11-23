@@ -43,7 +43,17 @@ export default function TrainingDayModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!trainer || !selectedSlotId) return;
+    if (!trainer || !selectedSlotId || isLoading) return;
+
+    // Prüfe ob bereits eingetragen
+    const alreadyEntered = dateEntries.some(
+      entry => entry.trainer_id === trainer.id && entry.training_day_id === selectedSlotId
+    );
+    
+    if (alreadyEntered) {
+      alert('Sie haben sich für dieses Training bereits eingetragen!');
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -58,23 +68,29 @@ export default function TrainingDayModal({
 
       setRemark('');
       onEntryAdded();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating entry:', error);
-      alert('Fehler beim Speichern des Eintrags');
+      
+      // Spezifische Fehlermeldung für Duplikat
+      if (error?.code === '23505' || error?.message?.includes('duplicate') || error?.message?.includes('unique')) {
+        alert('Sie haben sich bereits für dieses Training eingetragen!');
+      } else {
+        alert('Fehler beim Speichern des Eintrags. Bitte versuchen Sie es erneut.');
+      }
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleEntryClick = () => {
-    if (!isAuthenticated) {
-      onAuthRequired();
     }
   };
 
   // Filtere Einträge für das gewählte Datum
   const dateStr = format(date, 'yyyy-MM-dd');
   const dateEntries = entries.filter((e) => e.training_date === dateStr);
+
+  const handleEntryClick = () => {
+    if (!isAuthenticated) {
+      onAuthRequired();
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-3 md:p-4">
@@ -97,56 +113,69 @@ export default function TrainingDayModal({
           <div>
             <h3 className="font-bold text-white mb-3 text-base md:text-lg">Trainingszeiten:</h3>
             <div className="space-y-2">
-              {slots.map((slot, idx) => (
-                <div
-                  key={idx}
-                  className={`p-3 md:p-4 rounded-xl border-2 ${
-                    slot.isCancelled
-                      ? 'border-gray-500/50 bg-gray-700/40 backdrop-blur-sm opacity-60'
-                      : slot.isExtra
-                      ? 'border-purple-400/50 bg-purple-500/20 backdrop-blur-sm'
-                      : 'border-emerald-400/50 bg-emerald-500/20 backdrop-blur-sm'
-                  }`}
-                >
-                  <div className="flex justify-between items-center gap-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`font-bold text-base md:text-lg ${
-                          slot.isCancelled ? 'text-white/60 line-through' : 'text-white'
-                        }`}>
-                          {slot.timeStart.slice(0, 5)}
-                          {slot.timeEnd && ` - ${slot.timeEnd.slice(0, 5)}`}
-                        </span>
-                        {slot.isCancelled && (
-                          <span className="text-xs md:text-sm text-red-300 font-bold bg-red-500/30 px-2 py-1 rounded">
-                            ❌ ABGESAGT
+              {slots.map((slot, idx) => {
+                const isAlreadyEntered = trainer && dateEntries.some(
+                  entry => entry.trainer_id === trainer.id && entry.training_day_id === slot.trainingDayId
+                );
+                
+                return (
+                  <div
+                    key={idx}
+                    className={`p-3 md:p-4 rounded-xl border-2 ${
+                      slot.isCancelled
+                        ? 'border-gray-500/50 bg-gray-700/40 backdrop-blur-sm opacity-60'
+                        : isAlreadyEntered
+                        ? 'border-green-400/70 bg-green-500/30 backdrop-blur-sm'
+                        : slot.isExtra
+                        ? 'border-purple-400/50 bg-purple-500/20 backdrop-blur-sm'
+                        : 'border-emerald-400/50 bg-emerald-500/20 backdrop-blur-sm'
+                    }`}
+                  >
+                    <div className="flex justify-between items-center gap-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`font-bold text-base md:text-lg ${
+                            slot.isCancelled ? 'text-white/60 line-through' : 'text-white'
+                          }`}>
+                            {slot.timeStart.slice(0, 5)}
+                            {slot.timeEnd && ` - ${slot.timeEnd.slice(0, 5)}`}
                           </span>
-                        )}
-                        {slot.isExtra && !slot.isCancelled && (
-                          <span className="text-xs md:text-sm text-purple-200 font-semibold">
-                            ✨ Extra-Training
-                          </span>
+                          {slot.isCancelled && (
+                            <span className="text-xs md:text-sm text-red-300 font-bold bg-red-500/30 px-2 py-1 rounded">
+                              ❌ ABGESAGT
+                            </span>
+                          )}
+                          {isAlreadyEntered && !slot.isCancelled && (
+                            <span className="text-xs md:text-sm text-green-200 font-bold bg-green-500/40 px-2 py-1 rounded">
+                              ✓ EINGETRAGEN
+                            </span>
+                          )}
+                          {slot.isExtra && !slot.isCancelled && !isAlreadyEntered && (
+                            <span className="text-xs md:text-sm text-purple-200 font-semibold">
+                              ✨ Extra-Training
+                            </span>
+                          )}
+                        </div>
+                        {slot.reason && (
+                          <p className={`text-sm mt-1 ${
+                            slot.isCancelled ? 'text-white/60 italic' : 'text-white/80'
+                          }`}>
+                            {slot.isCancelled && '🔒 '}{slot.reason}
+                          </p>
                         )}
                       </div>
-                      {slot.reason && (
-                        <p className={`text-sm mt-1 ${
-                          slot.isCancelled ? 'text-white/60 italic' : 'text-white/80'
-                        }`}>
-                          {slot.isCancelled && '🔒 '}{slot.reason}
-                        </p>
+                      {isAdmin && !slot.isExtra && !slot.isCancelled && (
+                        <button
+                          onClick={() => handleCancelClick(slot)}
+                          className="px-3 md:px-4 py-2 bg-red-500/90 hover:bg-red-600 text-white text-sm font-semibold rounded-lg transition-all active:scale-95 shadow-lg"
+                        >
+                          Absagen
+                        </button>
                       )}
                     </div>
-                    {isAdmin && !slot.isExtra && !slot.isCancelled && (
-                      <button
-                        onClick={() => handleCancelClick(slot)}
-                        className="px-3 md:px-4 py-2 bg-red-500/90 hover:bg-red-600 text-white text-sm font-semibold rounded-lg transition-all active:scale-95 shadow-lg"
-                      >
-                        Absagen
-                      </button>
-                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 

@@ -66,7 +66,7 @@ export default function AdminLoginModal({ onClose }: AdminLoginModalProps) {
               onChange={(e) => setUsername(e.target.value)}
               required
               className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/30 rounded-xl text-white placeholder-white/50 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
-              placeholder="admin"
+              placeholder="Benutzername eingeben"
             />
           </div>
 
@@ -80,6 +80,7 @@ export default function AdminLoginModal({ onClose }: AdminLoginModalProps) {
               onChange={(e) => setPassword(e.target.value)}
               required
               className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/30 rounded-xl text-white placeholder-white/50 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+              placeholder="Passwort eingeben"
             />
           </div>
 

@@ -19,6 +19,7 @@ export interface TrainingEntry {
   id: number;
   club_id: string;
   training_day_id: number;
+  trainer_id: string;
   training_date: string; // YYYY-MM-DD format
   trainer_name: string;
   remark: string | null;
