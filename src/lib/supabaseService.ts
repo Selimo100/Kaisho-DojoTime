@@ -199,6 +199,7 @@ export async function createTrainingEntry(
     .insert({
       club_id: input.club_id,
       training_day_id: input.training_day_id,
+      override_id: input.override_id || null,
       training_date: input.training_date,
       trainer_id: input.trainer_id,
       trainer_name: input.trainer_name,

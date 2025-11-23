@@ -28,8 +28,8 @@ export default function TrainingDayModal({
   onAuthRequired,
 }: TrainingDayModalProps) {
   const { trainer, isAuthenticated } = useAuth();
-  const [selectedSlotId, setSelectedSlotId] = useState<number | null>(
-    slots.length === 1 && !slots[0].isCancelled ? slots[0].trainingDayId : null
+  const [selectedSlot, setSelectedSlot] = useState<TrainingSlot | null>(
+    slots.length === 1 && !slots[0].isCancelled ? slots[0] : null
   );
   const [remark, setRemark] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -43,12 +43,18 @@ export default function TrainingDayModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!trainer || !selectedSlotId || isLoading) return;
+    if (!trainer || !selectedSlot || isLoading) return;
 
     // Prüfe ob bereits eingetragen
-    const alreadyEntered = dateEntries.some(
-      entry => entry.trainer_id === trainer.id && entry.training_day_id === selectedSlotId
-    );
+    const alreadyEntered = dateEntries.some(entry => {
+      if (selectedSlot.isExtra) {
+        // Für Extra-Trainings: prüfe override_id
+        return entry.trainer_id === trainer.id && entry.override_id === selectedSlot.overrideId;
+      } else {
+        // Für normale Trainings: prüfe training_day_id
+        return entry.trainer_id === trainer.id && entry.training_day_id === selectedSlot.trainingDayId;
+      }
+    });
     
     if (alreadyEntered) {
       alert('Sie haben sich für dieses Training bereits eingetragen!');
@@ -59,7 +65,8 @@ export default function TrainingDayModal({
     try {
       await createTrainingEntry({
         club_id: clubId,
-        training_day_id: selectedSlotId,
+        training_day_id: selectedSlot.isExtra ? null : selectedSlot.trainingDayId,
+        override_id: selectedSlot.isExtra ? selectedSlot.overrideId : undefined,
         training_date: format(date, 'yyyy-MM-dd'),
         trainer_id: trainer.id,
         trainer_name: trainer.name,
@@ -234,14 +241,29 @@ export default function TrainingDayModal({
                       Trainingszeit wählen *
                     </label>
                     <select
-                      value={selectedSlotId || ''}
-                      onChange={(e) => setSelectedSlotId(Number(e.target.value))}
+                      value={selectedSlot ? (selectedSlot.isExtra ? `extra-${selectedSlot.overrideId}` : `day-${selectedSlot.trainingDayId}`) : ''}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (!value) {
+                          setSelectedSlot(null);
+                          return;
+                        }
+                        const idx = Number(value.split('-')[1]);
+                        const slot = slots.find(s => 
+                          value.startsWith('extra-') ? s.overrideId === idx : s.trainingDayId === idx
+                        );
+                        setSelectedSlot(slot || null);
+                      }}
                       required
                       className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/30 rounded-xl text-white focus:ring-2 focus:ring-kaisho-accent focus:border-kaisho-accent transition-all"
                     >
                       <option value="">Bitte wählen...</option>
                       {slots.map((slot, idx) => (
-                        <option key={idx} value={slot.trainingDayId} disabled={slot.isCancelled}>
+                        <option 
+                          key={idx} 
+                          value={slot.isExtra ? `extra-${slot.overrideId}` : `day-${slot.trainingDayId}`}
+                          disabled={slot.isCancelled}
+                        >
                           {slot.timeStart.slice(0, 5)}
                           {slot.timeEnd && ` - ${slot.timeEnd.slice(0, 5)}`}
                           {slot.isExtra && ' (Extra)'}
@@ -279,7 +301,7 @@ export default function TrainingDayModal({
 
                 <button
                   type="submit"
-                  disabled={isLoading || !selectedSlotId}
+                  disabled={isLoading || !selectedSlot}
                   className="w-full py-3 md:py-4 px-4 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl transition-all font-bold text-base md:text-lg shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isLoading ? 'Speichern...' : '✓ Eintragen'}

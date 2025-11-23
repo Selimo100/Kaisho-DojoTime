@@ -66,7 +66,8 @@ export function calculateTrainingSlotsForMonth(
           weekday: getDay(date),
           timeStart: override.time_start || '00:00',
           timeEnd: override.time_end || null,
-          trainingDayId: -1, // Markierung für Extra-Training
+          trainingDayId: -1, // Markierung für Extra-Training (nicht verwendet)
+          overrideId: override.id, // Wichtig für Extra-Trainings!
           isCancelled: false,
           isExtra: true,
           reason: override.reason || undefined,

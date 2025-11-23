@@ -18,7 +18,8 @@ export interface TrainingDay {
 export interface TrainingEntry {
   id: number;
   club_id: string;
-  training_day_id: number;
+  training_day_id: number | null;
+  override_id?: number | null; // Für Extra-Trainings
   trainer_id: string;
   training_date: string; // YYYY-MM-DD format
   trainer_name: string;
@@ -28,7 +29,8 @@ export interface TrainingEntry {
 
 export interface CreateTrainingEntryInput {
   club_id: string;
-  training_day_id: number;
+  training_day_id: number | null;
+  override_id?: number;
   training_date: string;
   trainer_name: string;
   remark?: string;
@@ -89,6 +91,7 @@ export interface TrainingSlot {
   timeStart: string;
   timeEnd: string | null;
   trainingDayId: number;
+  overrideId?: number; // Für Extra-Trainings
   isCancelled: boolean;
   isExtra: boolean;
   reason?: string;
