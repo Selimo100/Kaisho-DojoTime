@@ -53,7 +53,7 @@ export default function AdminPanel({
   
   // Collapsible Sections State
   const [isTrainingDaysOpen, setIsTrainingDaysOpen] = useState(true);
-  const [isAdminManagementOpen, setIsAdminManagementOpen] = useState(false);
+  const [isAdminManagementOpen, _setIsAdminManagementOpen] = useState(false);
   const [isTrainerManagementOpen, setIsTrainerManagementOpen] = useState(false);
   
   // Trainer Management State
@@ -216,7 +216,7 @@ export default function AdminPanel({
     }
   };
 
-  const handleDeleteAdmin = async (id: number, username: string) => {
+  const handleDeleteAdmin = async (id: number, _username: string) => {
     try {
       await deleteAdmin(id);
       await loadAdmins();
