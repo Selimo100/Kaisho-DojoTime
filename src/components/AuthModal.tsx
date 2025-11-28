@@ -65,8 +65,8 @@ export default function AuthModal({ clubId, clubName, onClose }: AuthModalProps)
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-3 md:p-4">
-      <div className="bg-gradient-to-br from-kaisho-dark via-kaisho-primary to-kaisho-secondary rounded-2xl shadow-2xl max-w-md w-full p-6 md:p-8 border border-white/20">
+    <div className="fixed inset-0 bg-kaisho-dark/80 backdrop-blur-sm flex items-center justify-center z-50 p-3 md:p-4">
+      <div className="bg-gradient-to-br from-kaisho-darkPanel via-kaisho-blueDark to-kaisho-darkPanel rounded-2xl shadow-2xl max-w-md w-full p-6 md:p-8 border border-kaisho-blueLight/20">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl md:text-2xl font-bold text-white">
             {isLogin ? '🔐 Anmelden' : '✨ Registrieren'}
@@ -84,8 +84,8 @@ export default function AuthModal({ clubId, clubName, onClose }: AuthModalProps)
         </p>
 
         {error && (
-          <div className="mb-4 p-3 md:p-4 bg-red-500/20 backdrop-blur-sm border border-red-400/50 rounded-xl">
-            <p className="text-sm text-red-100 font-medium">{error}</p>
+          <div className="mb-4 p-3 md:p-4 bg-kaisho-red/20 backdrop-blur-sm border border-kaisho-red/50 rounded-xl">
+            <p className="text-sm text-kaisho-redLight font-medium">{error}</p>
           </div>
         )}
 
@@ -101,7 +101,7 @@ export default function AuthModal({ clubId, clubName, onClose }: AuthModalProps)
                 onChange={(e) => setName(e.target.value)}
                 required={!isLogin}
                 placeholder="Ihr Name"
-                className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/30 rounded-xl text-white placeholder-white/50 focus:ring-2 focus:ring-kaisho-accent focus:border-kaisho-accent transition-all"
+                className="w-full px-4 py-3 bg-kaisho-darkPanel/50 backdrop-blur-sm border border-kaisho-blueLight/30 rounded-xl text-white placeholder-kaisho-greyLight/50 focus:ring-2 focus:ring-kaisho-red focus:border-kaisho-red transition-all"
               />
             </div>
           )}
@@ -116,7 +116,7 @@ export default function AuthModal({ clubId, clubName, onClose }: AuthModalProps)
               onChange={(e) => setEmail(e.target.value)}
               required
               placeholder="trainer@example.com"
-              className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/30 rounded-xl text-white placeholder-white/50 focus:ring-2 focus:ring-kaisho-accent focus:border-kaisho-accent transition-all"
+              className="w-full px-4 py-3 bg-kaisho-darkPanel/50 backdrop-blur-sm border border-kaisho-blueLight/30 rounded-xl text-white placeholder-kaisho-greyLight/50 focus:ring-2 focus:ring-kaisho-red focus:border-kaisho-red transition-all"
             />
           </div>
 
@@ -131,14 +131,14 @@ export default function AuthModal({ clubId, clubName, onClose }: AuthModalProps)
               required
               minLength={6}
               placeholder="Mindestens 6 Zeichen"
-              className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/30 rounded-xl text-white placeholder-white/50 focus:ring-2 focus:ring-kaisho-accent focus:border-kaisho-accent transition-all"
+              className="w-full px-4 py-3 bg-kaisho-darkPanel/50 backdrop-blur-sm border border-kaisho-blueLight/30 rounded-xl text-white placeholder-kaisho-greyLight/50 focus:ring-2 focus:ring-kaisho-red focus:border-kaisho-red transition-all"
             />
           </div>
 
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-3 md:py-4 px-4 bg-gradient-to-r from-kaisho-accent to-red-600 hover:from-red-600 hover:to-kaisho-accent text-white rounded-xl transition-all font-bold text-base md:text-lg shadow-lg active:scale-95 disabled:opacity-50"
+            className="w-full py-3 md:py-4 px-4 bg-gradient-to-r from-kaisho-red to-kaisho-redLight hover:from-kaisho-redLight hover:to-kaisho-red text-white rounded-xl transition-all font-bold text-base md:text-lg shadow-lg shadow-kaisho-red/20 active:scale-95 disabled:opacity-50"
           >
             {isLoading
               ? 'Lädt...'

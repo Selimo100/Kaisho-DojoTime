@@ -37,9 +37,13 @@ export function calculateTrainingSlotsForMonth(
     );
 
     matchingTrainingDays.forEach((td) => {
-      // Prüfe ob es ein 'cancel' Override für dieses Datum gibt
+      // Prüfe ob es ein 'cancel' Override für dieses SPEZIFISCHE Training gibt
+      // Wenn training_day_id gesetzt ist, nur dieses Training absagen
+      // Wenn training_day_id NULL ist, alle Trainings an diesem Tag absagen (legacy)
       const cancelOverride = overrides.find(
-        (o) => o.override_date === dateStr && o.action === 'cancel'
+        (o) => o.override_date === dateStr && 
+               o.action === 'cancel' && 
+               (o.training_day_id === td.id || o.training_day_id === null || o.training_day_id === undefined)
       );
 
       slots.push({
@@ -48,6 +52,7 @@ export function calculateTrainingSlotsForMonth(
         timeStart: td.time_start,
         timeEnd: td.time_end,
         trainingDayId: td.id,
+        overrideId: cancelOverride?.id, // Override-ID für "Absage aufheben"
         isCancelled: !!cancelOverride,
         isExtra: false,
         reason: cancelOverride?.reason || undefined,
@@ -107,11 +112,11 @@ export function isTrainingDay(date: Date, slots: TrainingSlot[]): boolean {
 }
 
 /**
- * Hole alle Trainingsslots für ein bestimmtes Datum
+ * Hole alle Trainingsslots für ein bestimmtes Datum (inkl. abgesagte)
  */
-export function getSlotsForDate(date: Date, slots: TrainingSlot[]): TrainingSlot[] {
+export function getSlotsForDate(date: Date, slots: TrainingSlot[], includeCancelled: boolean = true): TrainingSlot[] {
   const dateStr = format(date, 'yyyy-MM-dd');
-  return slots.filter((slot) => slot.date === dateStr && !slot.isCancelled);
+  return slots.filter((slot) => slot.date === dateStr && (includeCancelled || !slot.isCancelled));
 }
 
 /**

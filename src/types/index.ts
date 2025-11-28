@@ -66,6 +66,7 @@ export interface TrainerRegisterInput {
 export interface TrainingOverride {
   id: number;
   club_id: string;
+  training_day_id?: number | null;
   override_date: string; // YYYY-MM-DD format
   time_start: string | null;
   time_end: string | null;
@@ -77,6 +78,7 @@ export interface TrainingOverride {
 
 export interface CreateOverrideInput {
   club_id: string;
+  training_day_id?: number;
   override_date: string;
   action: 'cancel' | 'extra';
   time_start?: string;

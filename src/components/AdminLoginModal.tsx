@@ -37,8 +37,8 @@ export default function AdminLoginModal({ onClose }: AdminLoginModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-3 md:p-4">
-      <div className="bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900 rounded-2xl shadow-2xl max-w-md w-full p-6 md:p-8 border border-blue-400/30">
+    <div className="fixed inset-0 bg-kaisho-dark/80 backdrop-blur-sm flex items-center justify-center z-50 p-3 md:p-4">
+      <div className="bg-gradient-to-br from-kaisho-darkPanel via-kaisho-blueDark to-kaisho-darkPanel rounded-2xl shadow-2xl max-w-md w-full p-6 md:p-8 border border-kaisho-blueLight/30">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl md:text-2xl font-bold text-white">🔐 Admin-Anmeldung</h2>
           <button
@@ -50,7 +50,7 @@ export default function AdminLoginModal({ onClose }: AdminLoginModalProps) {
         </div>
 
         {error && (
-          <div className="mb-4 p-3 md:p-4 bg-red-500/20 backdrop-blur-sm border border-red-400/50 text-red-100 rounded-xl font-medium">
+          <div className="mb-4 p-3 md:p-4 bg-kaisho-red/20 backdrop-blur-sm border border-kaisho-red/50 text-kaisho-redLight rounded-xl font-medium">
             {error}
           </div>
         )}
@@ -65,7 +65,7 @@ export default function AdminLoginModal({ onClose }: AdminLoginModalProps) {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
-              className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/30 rounded-xl text-white placeholder-white/50 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+              className="w-full px-4 py-3 bg-kaisho-darkPanel/50 backdrop-blur-sm border border-kaisho-blueLight/30 rounded-xl text-white placeholder-kaisho-greyLight/50 focus:ring-2 focus:ring-kaisho-blueLight focus:border-kaisho-blueLight transition-all"
               placeholder="Benutzername eingeben"
             />
           </div>
@@ -79,7 +79,7 @@ export default function AdminLoginModal({ onClose }: AdminLoginModalProps) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/30 rounded-xl text-white placeholder-white/50 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+              className="w-full px-4 py-3 bg-kaisho-darkPanel/50 backdrop-blur-sm border border-kaisho-blueLight/30 rounded-xl text-white placeholder-kaisho-greyLight/50 focus:ring-2 focus:ring-kaisho-blueLight focus:border-kaisho-blueLight transition-all"
               placeholder="Passwort eingeben"
             />
           </div>
@@ -87,7 +87,7 @@ export default function AdminLoginModal({ onClose }: AdminLoginModalProps) {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-3 md:py-4 px-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl transition-all font-bold text-base md:text-lg shadow-lg active:scale-95 disabled:opacity-50"
+            className="w-full py-3 md:py-4 px-4 bg-gradient-to-r from-kaisho-blueLight to-kaisho-blue hover:from-kaisho-blue hover:to-kaisho-blueLight text-white rounded-xl transition-all font-bold text-base md:text-lg shadow-lg shadow-kaisho-blueLight/20 active:scale-95 disabled:opacity-50"
           >
             {isLoading ? 'Anmelden...' : '✓ Als Admin anmelden'}
           </button>

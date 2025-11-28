@@ -37,6 +37,7 @@ export default function CancelTrainingModal({
     try {
       await createOverride({
         club_id: clubId,
+        training_day_id: slot.trainingDayId, // Wichtig: Nur DIESES Training absagen
         override_date: format(date, 'yyyy-MM-dd'),
         action: 'cancel',
         time_start: slot.timeStart,
@@ -55,8 +56,8 @@ export default function CancelTrainingModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[60] p-3 md:p-4">
-      <div className="bg-gradient-to-br from-red-900 via-red-800 to-red-900 rounded-2xl shadow-2xl max-w-md w-full p-6 md:p-8 border border-red-400/30">
+    <div className="fixed inset-0 bg-kaisho-dark/80 backdrop-blur-sm flex items-center justify-center z-[60] p-3 md:p-4">
+      <div className="bg-gradient-to-br from-kaisho-darkPanel via-kaisho-blueDark to-kaisho-darkPanel rounded-2xl shadow-2xl max-w-md w-full p-6 md:p-8 border border-kaisho-red/30">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl md:text-2xl font-bold text-white">
             ⚠️ Training absagen
@@ -69,7 +70,7 @@ export default function CancelTrainingModal({
           </button>
         </div>
 
-        <div className="mb-6 p-4 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20">
+        <div className="mb-6 p-4 bg-kaisho-darkPanel/50 backdrop-blur-sm rounded-xl border border-kaisho-blueLight/20">
           <div className="text-white/90 text-sm mb-2">
             <strong>Datum:</strong> {format(date, 'EEEE, d. MMMM yyyy', { locale: de })}
           </div>
@@ -80,7 +81,7 @@ export default function CancelTrainingModal({
         </div>
 
         {error && (
-          <div className="mb-4 p-3 md:p-4 bg-red-500/20 backdrop-blur-sm border border-red-400/50 text-red-100 rounded-xl font-medium">
+          <div className="mb-4 p-3 md:p-4 bg-kaisho-red/20 backdrop-blur-sm border border-kaisho-red/50 text-kaisho-redLight rounded-xl font-medium">
             {error}
           </div>
         )}
@@ -96,12 +97,12 @@ export default function CancelTrainingModal({
               required
               rows={4}
               placeholder="z.B. Krankheit, Feiertag, Hallenausfall..."
-              className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/30 rounded-xl text-white placeholder-white/50 font-medium focus:ring-2 focus:ring-red-400 focus:border-red-400 transition-all resize-none"
+              className="w-full px-4 py-3 bg-kaisho-darkPanel/50 backdrop-blur-sm border border-kaisho-blueLight/30 rounded-xl text-white placeholder-kaisho-greyLight/50 font-medium focus:ring-2 focus:ring-kaisho-red focus:border-kaisho-red transition-all resize-none"
             />
           </div>
 
-          <div className="p-3 bg-yellow-500/20 backdrop-blur-sm border border-yellow-400/50 rounded-xl">
-            <p className="text-xs text-yellow-100">
+          <div className="p-3 bg-amber-500/20 backdrop-blur-sm border border-amber-400/50 rounded-xl">
+            <p className="text-xs text-amber-100">
               ⚠️ <strong>Hinweis:</strong> Nach der Absage können sich keine Trainer mehr für dieses 
               Training eintragen. Die Absage wird im Kalender sichtbar angezeigt.
             </p>
@@ -111,14 +112,14 @@ export default function CancelTrainingModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-3 px-4 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all font-semibold border border-white/30 active:scale-95"
+              className="flex-1 py-3 px-4 bg-kaisho-darkPanel/80 hover:bg-kaisho-darkPanel text-white rounded-xl transition-all font-semibold border border-kaisho-blueLight/30 active:scale-95"
             >
               Abbrechen
             </button>
             <button
               type="submit"
               disabled={isLoading}
-              className="flex-1 py-3 px-4 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl transition-all font-bold shadow-lg active:scale-95 disabled:opacity-50"
+              className="flex-1 py-3 px-4 bg-gradient-to-r from-kaisho-red to-kaisho-redLight hover:from-kaisho-redLight hover:to-kaisho-red text-white rounded-xl transition-all font-bold shadow-lg shadow-kaisho-red/20 active:scale-95 disabled:opacity-50"
             >
               {isLoading ? '⏳ Absagen...' : '✓ Training absagen'}
             </button>

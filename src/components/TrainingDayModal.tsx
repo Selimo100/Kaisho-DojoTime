@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import type { TrainingSlot, TrainingEntry } from '../types';
 import { useAuth } from '../context/AuthContext';
-import { createTrainingEntry } from '../lib/supabaseService';
+import { createTrainingEntry, deleteTrainingEntry, deleteOverride } from '../lib/supabaseService';
 import CancelTrainingModal from './CancelTrainingModal';
 
 interface TrainingDayModalProps {
@@ -33,6 +33,8 @@ export default function TrainingDayModal({
   );
   const [remark, setRemark] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState<number | null>(null);
+  const [isUncancelling, setIsUncancelling] = useState<number | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [slotToCancel, setSlotToCancel] = useState<TrainingSlot | null>(null);
 
@@ -41,24 +43,60 @@ export default function TrainingDayModal({
     setShowCancelModal(true);
   };
 
+  const handleUncancelClick = async (slot: TrainingSlot) => {
+    if (!slot.overrideId) {
+      console.error('No overrideId found for cancelled slot');
+      return;
+    }
+    
+    setIsUncancelling(slot.trainingDayId);
+    try {
+      await deleteOverride(slot.overrideId);
+      onEntryAdded(); // Refresh data
+      onClose(); // Modal schliessen nach erfolgreicher Aktion
+    } catch (error) {
+      console.error('Error uncancelling training:', error);
+    } finally {
+      setIsUncancelling(null);
+    }
+  };
+
+  // Filtere Einträge für das gewählte Datum
+  const dateStr = format(date, 'yyyy-MM-dd');
+  const dateEntries = entries.filter((e) => e.training_date === dateStr);
+
+  // Prüfe ob Trainer bereits für einen Slot eingetragen ist
+  const getTrainerEntryForSlot = (slot: TrainingSlot) => {
+    if (!trainer) return null;
+    return dateEntries.find(entry => {
+      if (slot.isExtra) {
+        return entry.trainer_id === trainer.id && entry.override_id === slot.overrideId;
+      } else {
+        return entry.trainer_id === trainer.id && entry.training_day_id === slot.trainingDayId;
+      }
+    });
+  };
+
+  // Zähle Einträge pro Slot
+  const getEntriesForSlot = (slot: TrainingSlot) => {
+    return dateEntries.filter(entry => {
+      if (slot.isExtra) {
+        return entry.override_id === slot.overrideId;
+      } else {
+        return entry.training_day_id === slot.trainingDayId;
+      }
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!trainer || !selectedSlot || isLoading) return;
 
     // Prüfe ob bereits eingetragen
-    const alreadyEntered = dateEntries.some(entry => {
-      if (selectedSlot.isExtra) {
-        // Für Extra-Trainings: prüfe override_id
-        return entry.trainer_id === trainer.id && entry.override_id === selectedSlot.overrideId;
-      } else {
-        // Für normale Trainings: prüfe training_day_id
-        return entry.trainer_id === trainer.id && entry.training_day_id === selectedSlot.trainingDayId;
-      }
-    });
+    const alreadyEntered = getTrainerEntryForSlot(selectedSlot);
     
     if (alreadyEntered) {
-      alert('Sie haben sich für dieses Training bereits eingetragen!');
-      return;
+      return; // Bereits eingetragen
     }
 
     setIsLoading(true);
@@ -77,21 +115,23 @@ export default function TrainingDayModal({
       onEntryAdded();
     } catch (error: any) {
       console.error('Error creating entry:', error);
-      
-      // Spezifische Fehlermeldung für Duplikat
-      if (error?.code === '23505' || error?.message?.includes('duplicate') || error?.message?.includes('unique')) {
-        alert('Sie haben sich bereits für dieses Training eingetragen!');
-      } else {
-        alert('Fehler beim Speichern des Eintrags. Bitte versuchen Sie es erneut.');
-      }
+      // Fehler wird im Console geloggt
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Filtere Einträge für das gewählte Datum
-  const dateStr = format(date, 'yyyy-MM-dd');
-  const dateEntries = entries.filter((e) => e.training_date === dateStr);
+  const handleUnregister = async (entryId: number) => {
+    setIsDeleting(entryId);
+    try {
+      await deleteTrainingEntry(entryId);
+      onEntryAdded(); // Refresh data
+    } catch (error) {
+      console.error('Error deleting entry:', error);
+    } finally {
+      setIsDeleting(null);
+    }
+  };
 
   const handleEntryClick = () => {
     if (!isAuthenticated) {
@@ -100,85 +140,176 @@ export default function TrainingDayModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-3 md:p-4">
-      <div className="bg-gradient-to-br from-kaisho-dark via-kaisho-primary to-kaisho-secondary rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-white/20">
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-3 md:p-4">
+      <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden border border-kaisho-greyLight flex flex-col">
         {/* Header */}
-        <div className="sticky top-0 bg-kaisho-dark/95 backdrop-blur-md border-b border-white/20 p-4 md:p-5 flex justify-between items-center rounded-t-2xl">
-          <h2 className="text-lg md:text-xl font-bold text-white">
-            {format(date, 'EEEE, d. MMMM yyyy', { locale: de })}
-          </h2>
+        <div className="bg-white border-b border-kaisho-greyLight p-5 md:p-6 flex justify-between items-center flex-shrink-0">
+          <div>
+            <h2 className="text-xl md:text-2xl font-bold text-kaisho-blue tracking-tight">
+              {format(date, 'EEEE', { locale: de })}
+            </h2>
+            <p className="text-sm text-gray-500 mt-1">
+              {format(date, 'd. MMMM yyyy', { locale: de })}
+            </p>
+          </div>
           <button
             onClick={onClose}
-            className="text-white/80 hover:text-white text-3xl font-bold w-10 h-10 flex items-center justify-center rounded-lg hover:bg-white/10 transition-all active:scale-95"
+            className="text-gray-400 hover:text-kaisho-blue text-2xl font-light w-12 h-12 flex items-center justify-center rounded-2xl hover:bg-kaisho-blueIce transition-all duration-300 active:scale-95"
           >
-            ×
+            ✕
           </button>
         </div>
 
-        <div className="p-4 md:p-6 space-y-4 md:space-y-6">
+        <div className="p-5 md:p-6 space-y-6 overflow-y-auto flex-1">
           {/* Trainingszeiten */}
           <div>
-            <h3 className="font-bold text-white mb-3 text-base md:text-lg">Trainingszeiten:</h3>
-            <div className="space-y-2">
+            <h3 className="font-semibold text-kaisho-blue mb-4 text-sm uppercase tracking-wider flex items-center gap-2">
+              <span className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">🏋️</span>
+              Trainingszeiten
+            </h3>
+            <div className="space-y-3">
               {slots.map((slot, idx) => {
-                const isAlreadyEntered = trainer && dateEntries.some(
-                  entry => entry.trainer_id === trainer.id && entry.training_day_id === slot.trainingDayId
-                );
+                const trainerEntry = getTrainerEntryForSlot(slot);
+                const slotEntries = getEntriesForSlot(slot);
+                const hasNoTrainers = slotEntries.length === 0 && !slot.isCancelled;
                 
                 return (
                   <div
                     key={idx}
-                    className={`p-3 md:p-4 rounded-xl border-2 ${
+                    className={`relative overflow-hidden rounded-2xl border transition-all duration-300 ${
                       slot.isCancelled
-                        ? 'border-gray-500/50 bg-gray-700/40 backdrop-blur-sm opacity-60'
-                        : isAlreadyEntered
-                        ? 'border-green-400/70 bg-green-500/30 backdrop-blur-sm'
+                        ? 'border-red-300 bg-red-50'
+                        : trainerEntry
+                        ? 'border-emerald-300 bg-emerald-50'
+                        : hasNoTrainers
+                        ? 'border-red-300 bg-red-50'
                         : slot.isExtra
-                        ? 'border-purple-400/50 bg-purple-500/20 backdrop-blur-sm'
-                        : 'border-emerald-400/50 bg-emerald-500/20 backdrop-blur-sm'
+                        ? 'border-kaisho-blueLight bg-kaisho-blueIce'
+                        : 'border-gray-200 bg-gray-50 hover:bg-kaisho-blueIce'
                     }`}
                   >
-                    <div className="flex justify-between items-center gap-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`font-bold text-base md:text-lg ${
-                            slot.isCancelled ? 'text-white/60 line-through' : 'text-white'
-                          }`}>
-                            {slot.timeStart.slice(0, 5)}
-                            {slot.timeEnd && ` - ${slot.timeEnd.slice(0, 5)}`}
-                          </span>
-                          {slot.isCancelled && (
-                            <span className="text-xs md:text-sm text-red-300 font-bold bg-red-500/30 px-2 py-1 rounded">
-                              ❌ ABGESAGT
+                    {/* Status Indicator Bar */}
+                    <div className={`absolute left-0 top-0 bottom-0 w-1 ${
+                      slot.isCancelled
+                        ? 'bg-red-500'
+                        : trainerEntry
+                        ? 'bg-emerald-500'
+                        : hasNoTrainers
+                        ? 'bg-red-500'
+                        : slot.isExtra
+                        ? 'bg-kaisho-blueLight'
+                        : 'bg-kaisho-blue'
+                    }`} />
+                    
+                    <div className="p-4 pl-5">
+                      <div className="flex justify-between items-start gap-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <span className={`text-xl font-bold tracking-tight ${
+                              slot.isCancelled ? 'text-gray-400 line-through' : 'text-kaisho-blue'
+                            }`}>
+                              {slot.timeStart.slice(0, 5)}
+                              {slot.timeEnd && (
+                                <span className="text-gray-500 font-normal"> – {slot.timeEnd.slice(0, 5)}</span>
+                              )}
                             </span>
+                            
+                            {/* Status Badges */}
+                            <div className="flex gap-2 flex-wrap">
+                              {slot.isCancelled && (
+                                <span className="inline-flex items-center gap-1 text-xs text-red-700 font-semibold bg-red-100 px-3 py-1.5 rounded-full">
+                                  <span>❌</span> Abgesagt
+                                </span>
+                              )}
+                              {trainerEntry && !slot.isCancelled && (
+                                <span className="inline-flex items-center gap-1 text-xs text-emerald-700 font-semibold bg-emerald-100 px-3 py-1.5 rounded-full">
+                                  <span>✓</span> Eingetragen
+                                </span>
+                              )}
+                              {hasNoTrainers && (
+                                <span className="inline-flex items-center gap-1 text-xs text-red-700 font-semibold bg-red-100 px-3 py-1.5 rounded-full animate-pulse">
+                                  <span>⚠️</span> Kein Trainer
+                                </span>
+                              )}
+                              {slot.isExtra && !slot.isCancelled && !trainerEntry && !hasNoTrainers && (
+                                <span className="inline-flex items-center gap-1 text-xs text-kaisho-blue font-semibold bg-kaisho-blueIce px-3 py-1.5 rounded-full">
+                                  <span>✨</span> Extra
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {/* Trainer Count */}
+                          {!slot.isCancelled && (
+                            <p className="text-sm text-gray-500 mt-2 flex items-center gap-2">
+                              <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
+                                slotEntries.length === 0 
+                                  ? 'bg-red-100 text-red-700' 
+                                  : 'bg-emerald-100 text-emerald-700'
+                              }`}>
+                                {slotEntries.length}
+                              </span>
+                              {slotEntries.length === 1 ? 'Trainer eingetragen' : 'Trainer eingetragen'}
+                            </p>
                           )}
-                          {isAlreadyEntered && !slot.isCancelled && (
-                            <span className="text-xs md:text-sm text-green-200 font-bold bg-green-500/40 px-2 py-1 rounded">
-                              ✓ EINGETRAGEN
-                            </span>
-                          )}
-                          {slot.isExtra && !slot.isCancelled && !isAlreadyEntered && (
-                            <span className="text-xs md:text-sm text-purple-200 font-semibold">
-                              ✨ Extra-Training
-                            </span>
+                          
+                          {slot.reason && (
+                            <p className="text-sm mt-2 text-gray-600 italic">
+                              „{slot.reason}"
+                            </p>
                           )}
                         </div>
-                        {slot.reason && (
-                          <p className={`text-sm mt-1 ${
-                            slot.isCancelled ? 'text-white/60 italic' : 'text-white/80'
-                          }`}>
-                            {slot.isCancelled && '🔒 '}{slot.reason}
-                          </p>
-                        )}
+                        
+                        {/* Action Buttons */}
+                        <div className="flex gap-2">
+                          {/* Austragen Button */}
+                          {trainerEntry && !slot.isCancelled && (
+                            <button
+                              onClick={() => handleUnregister(trainerEntry.id)}
+                              disabled={isDeleting === trainerEntry.id}
+                              className="px-4 py-2 bg-orange-500/80 hover:bg-orange-600 text-white text-sm font-semibold rounded-xl transition-all duration-300 active:scale-95 shadow-lg disabled:opacity-50 flex items-center gap-2"
+                            >
+                              {isDeleting === trainerEntry.id ? (
+                                <span className="animate-spin">⏳</span>
+                              ) : (
+                                <>
+                                  <span>↩</span>
+                                  <span className="hidden md:inline">Austragen</span>
+                                </>
+                              )}
+                            </button>
+                          )}
+                          
+                          {/* Absage aufheben Button for Admin */}
+                          {isAdmin && !slot.isExtra && slot.isCancelled && slot.overrideId && (
+                            <button
+                              onClick={() => handleUncancelClick(slot)}
+                              disabled={isUncancelling === slot.trainingDayId}
+                              className="px-4 py-2 bg-emerald-500/80 hover:bg-emerald-600 text-white text-sm font-semibold rounded-xl transition-all duration-300 active:scale-95 shadow-lg disabled:opacity-50 flex items-center gap-2"
+                            >
+                              {isUncancelling === slot.trainingDayId ? (
+                                <span className="animate-spin">⏳</span>
+                              ) : (
+                                <>
+                                  <span>↩</span>
+                                  <span className="hidden md:inline">Absage aufheben</span>
+                                  <span className="md:hidden">Aufheben</span>
+                                </>
+                              )}
+                            </button>
+                          )}
+                          
+                          {/* Cancel Button for Admin */}
+                          {isAdmin && !slot.isExtra && !slot.isCancelled && (
+                            <button
+                              onClick={() => handleCancelClick(slot)}
+                              className="px-4 py-2 bg-red-500/80 hover:bg-red-600 text-white text-sm font-semibold rounded-xl transition-all duration-300 active:scale-95 shadow-lg"
+                            >
+                              Absagen
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      {isAdmin && !slot.isExtra && !slot.isCancelled && (
-                        <button
-                          onClick={() => handleCancelClick(slot)}
-                          className="px-3 md:px-4 py-2 bg-red-500/90 hover:bg-red-600 text-white text-sm font-semibold rounded-lg transition-all active:scale-95 shadow-lg"
-                        >
-                          Absagen
-                        </button>
-                      )}
                     </div>
                   </div>
                 );
@@ -189,47 +320,99 @@ export default function TrainingDayModal({
           {/* Bestehende Einträge - Nur für eingeloggte User */}
           {isAuthenticated && dateEntries.length > 0 && (
             <div>
-              <h3 className="font-bold text-white mb-3 text-base md:text-lg">
-                Eingetragene Trainer ({dateEntries.length}):
+              <h3 className="font-semibold text-kaisho-blue mb-4 text-sm uppercase tracking-wider flex items-center gap-2">
+                <span className="w-8 h-8 bg-kaisho-blueIce rounded-lg flex items-center justify-center">👥</span>
+                Eingetragene Trainer
+                <span className="ml-auto bg-kaisho-blueIce text-kaisho-blue px-3 py-1 rounded-full text-xs font-bold">
+                  {dateEntries.length}
+                </span>
               </h3>
-              <div className="space-y-2">
-                {dateEntries.map((entry) => (
-                  <div
-                    key={entry.id}
-                    className="bg-white/10 backdrop-blur-sm p-3 md:p-4 rounded-xl border border-white/20"
-                  >
-                    <div className="font-semibold text-white text-base">{entry.trainer_name}</div>
-                    {entry.remark && (
-                      <p className="text-sm text-white/80 mt-1">{entry.remark}</p>
-                    )}
-                  </div>
-                ))}
+              <div className="grid gap-2">
+                {dateEntries.map((entry) => {
+                  const isOwnEntry = trainer && entry.trainer_id === trainer.id;
+                  
+                  return (
+                    <div
+                      key={entry.id}
+                      className={`group relative overflow-hidden rounded-xl border transition-all duration-300 ${
+                        isOwnEntry 
+                          ? 'bg-emerald-50 border-emerald-300' 
+                          : 'bg-gray-50 border-gray-200 hover:bg-kaisho-blueIce'
+                      }`}
+                    >
+                      <div className="p-4 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold ${
+                            isOwnEntry 
+                              ? 'bg-emerald-200 text-emerald-700' 
+                              : 'bg-kaisho-blueIce text-kaisho-blue'
+                          }`}>
+                            {entry.trainer_name.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="font-semibold text-gray-800 flex items-center gap-2">
+                              {entry.trainer_name}
+                              {isOwnEntry && (
+                                <span className="text-xs text-emerald-600 font-medium">(Du)</span>
+                              )}
+                            </div>
+                            {entry.remark && (
+                              <p className="text-sm text-gray-500 mt-0.5">
+                                {entry.remark}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {isOwnEntry && (
+                          <button
+                            onClick={() => handleUnregister(entry.id)}
+                            disabled={isDeleting === entry.id}
+                            className="opacity-0 group-hover:opacity-100 px-3 py-1.5 bg-red-500/80 hover:bg-red-600 text-white text-xs font-semibold rounded-lg transition-all duration-300 active:scale-95"
+                          >
+                            {isDeleting === entry.id ? '...' : '✕'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
 
           {/* Datenschutz-Hinweis für nicht eingeloggte User */}
           {!isAuthenticated && (
-            <div className="p-4 bg-yellow-500/20 backdrop-blur-sm border border-yellow-400/50 rounded-xl">
-              <p className="text-sm text-yellow-100 font-medium">
-                🔒 Aus Datenschutzgründen sind Trainer-Einträge nur nach dem Login sichtbar.
-                Bitte melden Sie sich an, um zu sehen, wer bereits eingetragen ist.
-              </p>
+            <div className="p-5 bg-amber-50 border border-amber-200 rounded-2xl">
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">🔒</span>
+                <div>
+                  <p className="font-semibold text-amber-800 mb-1">Datenschutz</p>
+                  <p className="text-sm text-amber-700">
+                    Trainer-Einträge sind nur nach dem Login sichtbar.
+                    Melden Sie sich an, um zu sehen, wer bereits eingetragen ist.
+                  </p>
+                </div>
+              </div>
             </div>
           )}
 
           {/* Eintragen-Formular */}
           {isAuthenticated ? (
-            <div className="border-t border-white/20 pt-4 md:pt-6">
-              <h3 className="font-bold text-white mb-4 text-base md:text-lg">Als Trainer eintragen:</h3>
+            <div className="border-t border-gray-200 pt-6">
+              <h3 className="font-semibold text-kaisho-blue mb-4 text-sm uppercase tracking-wider flex items-center gap-2">
+                <span className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">✍️</span>
+                Eintragen
+              </h3>
               
               {/* Check if all slots are cancelled */}
               {slots.every(slot => slot.isCancelled) ? (
-                <div className="p-4 bg-red-500/20 backdrop-blur-sm border border-red-400/50 rounded-xl text-center">
-                  <p className="text-red-100 font-semibold">
-                    ❌ Alle Trainings an diesem Tag wurden abgesagt.
+                <div className="p-5 bg-red-50 border border-red-200 rounded-2xl text-center">
+                  <span className="text-3xl mb-3 block">❌</span>
+                  <p className="text-red-700 font-semibold">
+                    Alle Trainings an diesem Tag wurden abgesagt.
                   </p>
-                  <p className="text-red-200/80 text-sm mt-2">
+                  <p className="text-red-600 text-sm mt-2">
                     Es können keine Einträge vorgenommen werden.
                   </p>
                 </div>
@@ -237,8 +420,8 @@ export default function TrainingDayModal({
               <form onSubmit={handleSubmit} className="space-y-4">
                 {slots.filter(s => !s.isCancelled).length > 1 && (
                   <div>
-                    <label className="block text-sm font-semibold text-white mb-2">
-                      Trainingszeit wählen *
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Trainingszeit wählen
                     </label>
                     <select
                       value={selectedSlot ? (selectedSlot.isExtra ? `extra-${selectedSlot.overrideId}` : `day-${selectedSlot.trainingDayId}`) : ''}
@@ -255,19 +438,17 @@ export default function TrainingDayModal({
                         setSelectedSlot(slot || null);
                       }}
                       required
-                      className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/30 rounded-xl text-white focus:ring-2 focus:ring-kaisho-accent focus:border-kaisho-accent transition-all"
+                      className="w-full px-4 py-3.5 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 focus:ring-2 focus:ring-kaisho-blueLight focus:border-kaisho-blueLight transition-all duration-300 appearance-none cursor-pointer"
                     >
                       <option value="">Bitte wählen...</option>
-                      {slots.map((slot, idx) => (
+                      {slots.filter(s => !s.isCancelled).map((slot, idx) => (
                         <option 
                           key={idx} 
                           value={slot.isExtra ? `extra-${slot.overrideId}` : `day-${slot.trainingDayId}`}
-                          disabled={slot.isCancelled}
                         >
                           {slot.timeStart.slice(0, 5)}
-                          {slot.timeEnd && ` - ${slot.timeEnd.slice(0, 5)}`}
-                          {slot.isExtra && ' (Extra)'}
-                          {slot.isCancelled && ' [ABGESAGT]'}
+                          {slot.timeEnd && ` – ${slot.timeEnd.slice(0, 5)}`}
+                          {slot.isExtra && ' (Extra-Training)'}
                         </option>
                       ))}
                     </select>
@@ -275,47 +456,58 @@ export default function TrainingDayModal({
                 )}
 
                 <div>
-                  <label className="block text-sm font-semibold text-white mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Trainer
                   </label>
-                  <input
-                    type="text"
-                    value={trainer?.name || ''}
-                    disabled
-                    className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white/70 font-medium"
-                  />
+                  <div className="flex items-center gap-3 px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold">
+                      {trainer?.name.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="text-gray-800 font-medium">{trainer?.name}</span>
+                  </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-white mb-2">
-                    Bemerkung (optional)
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Bemerkung <span className="text-gray-400">(optional)</span>
                   </label>
                   <textarea
                     value={remark}
                     onChange={(e) => setRemark(e.target.value)}
                     placeholder="z.B. Vertretung, besondere Themen..."
                     rows={3}
-                    className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/30 rounded-xl text-white placeholder-white/50 focus:ring-2 focus:ring-kaisho-accent focus:border-kaisho-accent transition-all"
+                    className="w-full px-4 py-3.5 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-400 focus:ring-2 focus:ring-kaisho-blueLight focus:border-kaisho-blueLight transition-all duration-300 resize-none"
                   />
                 </div>
 
                 <button
                   type="submit"
                   disabled={isLoading || !selectedSlot}
-                  className="w-full py-3 md:py-4 px-4 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl transition-all font-bold text-base md:text-lg shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-4 px-4 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl transition-all duration-300 font-bold text-lg shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex items-center justify-center gap-2"
                 >
-                  {isLoading ? 'Speichern...' : '✓ Eintragen'}
+                  {isLoading ? (
+                    <>
+                      <span className="animate-spin">⏳</span>
+                      Speichern...
+                    </>
+                  ) : (
+                    <>
+                      <span>✓</span>
+                      Eintragen
+                    </>
+                  )}
                 </button>
               </form>
               )}
             </div>
           ) : (
-            <div className="border-t border-white/20 pt-4 md:pt-6">
+            <div className="border-t border-gray-200 pt-6">
               <button
                 onClick={handleEntryClick}
-                className="w-full py-4 px-4 bg-gradient-to-r from-kaisho-accent to-red-600 hover:from-red-600 hover:to-kaisho-accent text-white rounded-xl transition-all font-bold text-base md:text-lg shadow-lg active:scale-95"
+                className="w-full py-4 px-4 bg-gradient-to-r from-kaisho-blue to-kaisho-blueLight hover:from-kaisho-blueLight hover:to-kaisho-blue text-white rounded-xl transition-all duration-300 font-bold text-lg shadow-lg active:scale-[0.98] flex items-center justify-center gap-2"
               >
-                🔐 Anmelden um sich einzutragen
+                <span>🔐</span>
+                Anmelden um sich einzutragen
               </button>
             </div>
           )}
@@ -333,8 +525,8 @@ export default function TrainingDayModal({
             setSlotToCancel(null);
           }}
           onSuccess={() => {
-            onEntryAdded(); // Refresh data
-            onClose(); // Close main modal
+            onEntryAdded();
+            onClose();
           }}
         />
       )}

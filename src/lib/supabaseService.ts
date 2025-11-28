@@ -217,6 +217,18 @@ export async function createTrainingEntry(
   return data;
 }
 
+export async function deleteTrainingEntry(entryId: number): Promise<void> {
+  const { error } = await supabase
+    .from('training_entries')
+    .delete()
+    .eq('id', entryId);
+
+  if (error) {
+    console.error('Error deleting training entry:', error);
+    throw error;
+  }
+}
+
 // ========== TRAINERS (Authentication) ==========
 
 export async function getAllTrainers(): Promise<Trainer[]> {
@@ -334,6 +346,7 @@ export async function getOverridesByClub(
 
 export async function createOverride(input: {
   club_id: string;
+  training_day_id?: number;
   override_date: string;
   action: 'cancel' | 'extra';
   time_start?: string;
@@ -345,6 +358,7 @@ export async function createOverride(input: {
     .from('training_overrides')
     .insert({
       club_id: input.club_id,
+      training_day_id: input.training_day_id || null,
       override_date: input.override_date,
       action: input.action,
       time_start: input.time_start || null,

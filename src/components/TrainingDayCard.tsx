@@ -47,7 +47,6 @@ export default function TrainingDayCard({
       onEntryAdded();
     } catch (error) {
       console.error('Error creating entry:', error);
-      alert('Fehler beim Speichern des Eintrags');
     } finally {
       setIsLoading(false);
     }

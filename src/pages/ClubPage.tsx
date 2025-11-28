@@ -44,7 +44,6 @@ export default function ClubPage() {
       try {
         const clubData = await getClubBySlug(slug);
         if (!clubData) {
-          alert('Verein nicht gefunden');
           navigate('/');
           return;
         }
@@ -71,7 +70,6 @@ export default function ClubPage() {
         setSlots(calculatedSlots);
       } catch (error) {
         console.error('Error loading club data:', error);
-        alert('Fehler beim Laden der Daten');
       } finally {
         setIsLoading(false);
       }
@@ -93,8 +91,22 @@ export default function ClubPage() {
   const handleRefreshTrainingDays = async () => {
     if (!club) return;
     try {
-      const days = await getTrainingDaysByClub(club.id);
+      // Refresh training days AND overrides
+      const [days, overridesData] = await Promise.all([
+        getTrainingDaysByClub(club.id),
+        getOverridesByClub(club.id)
+      ]);
       setTrainingDays(days);
+      setOverrides(overridesData);
+      
+      // Recalculate slots with updated data
+      const calculatedSlots = calculateTrainingSlotsForMonth(
+        currentMonth.getFullYear(),
+        currentMonth.getMonth(),
+        days,
+        overridesData
+      );
+      setSlots(calculatedSlots);
     } catch (error) {
       console.error('Error refreshing training days:', error);
     }
@@ -121,15 +133,15 @@ export default function ClubPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-kaisho-dark via-kaisho-primary to-kaisho-secondary">
+    <div className="min-h-screen bg-kaisho-whiteSoft">
       <div className="container mx-auto px-3 py-4 md:px-4 md:py-6 max-w-6xl">
         {/* Mobile-First Header */}
         <div className="mb-4 md:mb-6">
           {/* Back Button */}
           <button
             onClick={() => navigate('/')}
-            className="text-white/90 hover:text-white mb-3 md:mb-4 flex items-center gap-2 text-sm md:text-base 
-                     bg-white/10 backdrop-blur-sm px-3 py-2 rounded-lg hover:bg-white/20 transition-all"
+            className="text-kaisho-blue hover:text-kaisho-blueLight mb-3 md:mb-4 flex items-center gap-2 text-sm md:text-base 
+                     bg-white px-3 py-2 rounded-lg hover:bg-kaisho-blueIce transition-all border border-kaisho-greyLight shadow-sm"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -138,11 +150,11 @@ export default function ClubPage() {
           </button>
 
           {/* Club Info Card */}
-          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 md:p-6 border border-white/20">
-            <h1 className="text-2xl md:text-4xl font-bold text-white mb-1">
+          <div className="bg-white rounded-2xl p-4 md:p-6 border border-kaisho-greyLight shadow-md">
+            <h1 className="text-2xl md:text-4xl font-bold text-kaisho-blue mb-1">
               {club.name}
             </h1>
-            <p className="text-kaisho-light/80 text-sm md:text-base">{club.city}</p>
+            <p className="text-gray-500 text-sm md:text-base">{club.city}</p>
           </div>
         </div>
 
@@ -150,20 +162,20 @@ export default function ClubPage() {
         <div className="mb-4 space-y-2">
           {/* Trainer Info */}
           {trainer && (
-            <div className="bg-green-500/20 backdrop-blur-sm rounded-xl p-3 md:p-4 border border-green-400/30">
+            <div className="bg-emerald-50 rounded-xl p-3 md:p-4 border border-emerald-200">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 md:w-10 md:h-10 bg-green-500 rounded-full flex items-center justify-center text-white font-bold text-sm md:text-base">
+                  <div className="w-8 h-8 md:w-10 md:h-10 bg-emerald-500 rounded-full flex items-center justify-center text-white font-bold text-sm md:text-base">
                     {trainer.name.charAt(0)}
                   </div>
                   <div>
-                    <p className="text-xs text-white/70">Angemeldet als Trainer:</p>
-                    <p className="font-medium text-white text-sm md:text-base">{trainer.name}</p>
+                    <p className="text-xs text-gray-500">Angemeldet als Trainer:</p>
+                    <p className="font-medium text-gray-800 text-sm md:text-base">{trainer.name}</p>
                   </div>
                 </div>
                 <button
                   onClick={logout}
-                  className="text-xs md:text-sm text-red-300 hover:text-red-200 bg-red-500/20 px-3 py-1.5 rounded-lg"
+                  className="text-xs md:text-sm text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-all"
                 >
                   Abmelden
                 </button>
@@ -175,7 +187,7 @@ export default function ClubPage() {
           {!trainer && (
             <button
               onClick={() => setShowAuthModal(true)}
-              className="w-full bg-kaisho-accent hover:bg-kaisho-accent/90 text-white rounded-xl p-4 
+              className="w-full bg-gradient-to-r from-kaisho-blue to-kaisho-blueLight hover:from-kaisho-blueLight hover:to-kaisho-blue text-white rounded-xl p-4 
                        flex items-center justify-between transition-all shadow-lg"
             >
               <div className="flex items-center gap-3">
@@ -202,8 +214,8 @@ export default function ClubPage() {
           {!admin ? (
             <button
               onClick={() => setShowAdminLoginModal(true)}
-              className="w-full bg-blue-500/20 backdrop-blur-sm text-white rounded-xl p-3 md:p-4 
-                       hover:bg-blue-500/30 transition-all border border-blue-400/30 flex items-center justify-between"
+              className="w-full bg-white text-kaisho-blue rounded-xl p-3 md:p-4 
+                       hover:bg-kaisho-blueIce transition-all border border-kaisho-greyLight shadow-sm flex items-center justify-between"
             >
               <span className="flex items-center gap-2 text-sm md:text-base">
                 🔐 <span>Als Admin anmelden</span>
@@ -214,26 +226,26 @@ export default function ClubPage() {
             </button>
           ) : (
             <div className="space-y-2">
-              <div className="bg-purple-500/20 backdrop-blur-sm rounded-xl p-3 md:p-4 border border-purple-400/30">
+              <div className="bg-kaisho-blueIce rounded-xl p-3 md:p-4 border border-kaisho-blueLight/30">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                    <div className="w-8 h-8 bg-kaisho-blueLight rounded-full flex items-center justify-center text-white font-bold text-sm">
                       {admin.username.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <p className="text-xs text-white/70">Admin:</p>
-                      <p className="font-medium text-white text-sm">{admin.username}</p>
+                      <p className="text-xs text-gray-500">Admin:</p>
+                      <p className="font-medium text-gray-800 text-sm">{admin.username}</p>
                     </div>
                   </div>
                   <button
                     onClick={logoutAdmin}
-                    className="text-xs text-red-300 hover:text-red-200 bg-red-500/20 px-2 py-1 rounded-lg"
+                    className="text-xs text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 px-2 py-1 rounded-lg transition-all"
                   >
                     Abmelden
                   </button>
                 </div>
                 {admin.is_super_admin && (
-                  <span className="inline-block text-xs bg-purple-400/30 text-purple-100 px-2 py-1 rounded">
+                  <span className="inline-block text-xs bg-kaisho-blueLight/20 text-kaisho-blue px-2 py-1 rounded border border-kaisho-blueLight/30 font-medium">
                     Super-Admin
                   </span>
                 )}
@@ -242,8 +254,8 @@ export default function ClubPage() {
               {canAdminManageClub() && (
                 <button
                   onClick={() => setShowAdminPanel(!showAdminPanel)}
-                  className="w-full bg-white/10 backdrop-blur-sm text-white rounded-xl p-3 
-                           hover:bg-white/20 transition-all border border-white/20 flex items-center justify-between"
+                  className="w-full bg-white text-kaisho-blue rounded-xl p-3 
+                           hover:bg-kaisho-blueIce transition-all border border-kaisho-greyLight shadow-sm flex items-center justify-between"
                 >
                   <span className="text-sm md:text-base font-medium">
                     {showAdminPanel ? '📁 Panel schliessen' : '⚙️ Admin-Panel öffnen'}
@@ -276,17 +288,18 @@ export default function ClubPage() {
 
         {/* Training Calendar - Mobile First */}
         {trainingDays.length === 0 ? (
-          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 md:p-8 text-center border border-white/20">
-            <div className="text-white/80 text-sm md:text-base">
+          <div className="bg-white rounded-2xl p-6 md:p-8 text-center border border-kaisho-greyLight shadow-md">
+            <div className="text-gray-500 text-sm md:text-base">
               Noch keine Trainingstage konfiguriert.
               {admin && canAdminManageClub() && ' Nutzen Sie das Admin-Panel oben.'}
             </div>
           </div>
         ) : (
-          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-3 md:p-6 border border-white/20">
+          <div className="bg-white rounded-2xl p-3 md:p-6 border border-kaisho-greyLight shadow-md">
             <TrainingCalendar
               currentDate={currentMonth}
               slots={slots}
+              entries={entries}
               onDateClick={(date, dateSlots) => {
                 setSelectedDate(date);
                 setSelectedSlots(dateSlots);

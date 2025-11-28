@@ -37,12 +37,10 @@ export default function EditExtraTrainingModal({
         reason: reason || null,
       });
       
-      alert('Extra-Training erfolgreich aktualisiert!');
       onSuccess();
       onClose();
     } catch (error) {
       console.error('Error updating extra training:', error);
-      alert('Fehler beim Aktualisieren des Extra-Trainings');
     } finally {
       setIsLoading(false);
     }
