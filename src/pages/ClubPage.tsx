@@ -13,6 +13,7 @@ import TrainingDayModal from '../components/TrainingDayModal';
 import AdminPanel from '../components/AdminPanel';
 import AdminLoginModal from '../components/AdminLoginModal';
 import AuthModal from '../components/AuthModal';
+import LoadingPage from '../components/LoadingPage';
 import { useAuth } from '../context/AuthContext';
 import { useAdmin } from '../context/AdminContext';
 import { calculateTrainingSlotsForMonth } from '../utils/calendarUtils';
@@ -121,11 +122,7 @@ export default function ClubPage() {
   };
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl text-gray-600">Laden...</div>
-      </div>
-    );
+    return <LoadingPage />;
   }
 
   if (!club) {
