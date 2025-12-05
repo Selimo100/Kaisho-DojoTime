@@ -457,3 +457,21 @@ export async function promoteTrainerToAdmin(input: {
 
   return data as number;
 }
+
+// Prüft ob ein Trainer auch Admin-Rechte hat und gibt den Admin zurück
+export async function checkTrainerIsAdmin(email: string, password: string): Promise<Admin | null> {
+  // Versuche mit der E-Mail als Username einzuloggen
+  const { data, error } = await supabase.rpc('verify_admin', {
+    p_username: email,
+    p_password: password,
+  });
+
+  if (error) {
+    console.error('Admin check error:', error);
+    return null;
+  }
+
+  if (!data || data.length === 0) return null;
+
+  return data[0];
+}

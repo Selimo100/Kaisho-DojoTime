@@ -11,7 +11,6 @@ import {
 import TrainingCalendar from '../components/TrainingCalendar';
 import TrainingDayModal from '../components/TrainingDayModal';
 import AdminPanel from '../components/AdminPanel';
-import AdminLoginModal from '../components/AdminLoginModal';
 import AuthModal from '../components/AuthModal';
 import LoadingPage from '../components/LoadingPage';
 import { useAuth } from '../context/AuthContext';
@@ -24,6 +23,12 @@ export default function ClubPage() {
   const { trainer, logout } = useAuth();
   const { admin, logoutAdmin } = useAdmin();
 
+  // Vollständiger Logout: Trainer und Admin komplett ausloggen
+  const handleFullLogout = () => {
+    logout();
+    logoutAdmin();
+  };
+
   const [club, setClub] = useState<Club | null>(null);
   const [trainingDays, setTrainingDays] = useState<TrainingDay[]>([]);
   const [entries, setEntries] = useState<TrainingEntry[]>([]);
@@ -34,7 +39,6 @@ export default function ClubPage() {
   const [selectedSlots, setSelectedSlots] = useState<TrainingSlot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
-  const [showAdminLoginModal, setShowAdminLoginModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   useEffect(() => {
@@ -162,33 +166,46 @@ export default function ClubPage() {
           </div>
         </div>
 
-        {/* Auth Status Bar - Mobile Optimized */}
-        <div className="mb-4 space-y-2">
-          {/* Trainer Info */}
-          {trainer && (
-            <div className="bg-emerald-50 rounded-xl p-3 md:p-4 border border-emerald-200">
+        {/* Auth Status Bar - Unified & Clean */}
+        <div className="mb-4">
+          {trainer ? (
+            <div className="bg-white rounded-xl p-3 md:p-4 border border-kaisho-greyLight shadow-sm">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 md:w-10 md:h-10 bg-emerald-500 rounded-full flex items-center justify-center text-white font-bold text-sm md:text-base">
-                    {trainer.name.charAt(0)}
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-kaisho-blue to-kaisho-blueLight rounded-full flex items-center justify-center text-white font-bold text-base md:text-lg">
+                      {trainer.name.charAt(0).toUpperCase()}
+                    </div>
+                    {admin && (
+                      <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center border-2 border-white">
+                        <span className="text-xs">👑</span>
+                      </div>
+                    )}
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">Angemeldet als Trainer:</p>
-                    <p className="font-medium text-gray-800 text-sm md:text-base">{trainer.name}</p>
+                    <p className="font-semibold text-gray-800 text-sm md:text-base">{trainer.name}</p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-500">Trainer</span>
+                      {admin && (
+                        <>
+                          <span className="text-xs text-gray-300">•</span>
+                          <span className="text-xs text-amber-600 font-medium">
+                            {admin.is_super_admin ? 'Super-Admin' : 'Admin'}
+                          </span>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <button
-                  onClick={logout}
-                  className="text-xs md:text-sm text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-all"
+                  onClick={handleFullLogout}
+                  className="text-sm text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 px-4 py-2 rounded-lg transition-all font-medium"
                 >
                   Abmelden
                 </button>
               </div>
             </div>
-          )}
-
-          {/* Guest Prompt */}
-          {!trainer && (
+          ) : (
             <button
               onClick={() => setShowAuthModal(true)}
               className="w-full bg-gradient-to-r from-kaisho-blue to-kaisho-blueLight hover:from-kaisho-blueLight hover:to-kaisho-blue text-white rounded-xl p-4 
@@ -213,70 +230,28 @@ export default function ClubPage() {
           )}
         </div>
 
-        {/* Admin Section - Mobile Optimized */}
-        <div className="mb-4 space-y-2">
-          {!admin ? (
+        {/* Admin Panel Toggle - Only shown if user is admin */}
+        {admin && canAdminManageClub() && (
+          <div className="mb-4">
             <button
-              onClick={() => setShowAdminLoginModal(true)}
-              className="w-full bg-white text-kaisho-blue rounded-xl p-3 md:p-4 
+              onClick={() => setShowAdminPanel(!showAdminPanel)}
+              className="w-full bg-white text-kaisho-blue rounded-xl p-3 
                        hover:bg-kaisho-blueIce transition-all border border-kaisho-greyLight shadow-sm flex items-center justify-between"
             >
-              <span className="flex items-center gap-2 text-sm md:text-base">
-                🔐 <span>Als Admin anmelden</span>
+              <span className="text-sm md:text-base font-medium flex items-center gap-2">
+                {showAdminPanel ? '📁 Admin-Panel schliessen' : '⚙️ Admin-Panel öffnen'}
               </span>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              <svg 
+                className={`w-5 h-5 transition-transform ${showAdminPanel ? 'rotate-180' : ''}`} 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             </button>
-          ) : (
-            <div className="space-y-2">
-              <div className="bg-kaisho-blueIce rounded-xl p-3 md:p-4 border border-kaisho-blueLight/30">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-kaisho-blueLight rounded-full flex items-center justify-center text-white font-bold text-sm">
-                      {admin.username.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Admin:</p>
-                      <p className="font-medium text-gray-800 text-sm">{admin.username}</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={logoutAdmin}
-                    className="text-xs text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 px-2 py-1 rounded-lg transition-all"
-                  >
-                    Abmelden
-                  </button>
-                </div>
-                {admin.is_super_admin && (
-                  <span className="inline-block text-xs bg-kaisho-blueLight/20 text-kaisho-blue px-2 py-1 rounded border border-kaisho-blueLight/30 font-medium">
-                    Super-Admin
-                  </span>
-                )}
-              </div>
-              
-              {canAdminManageClub() && (
-                <button
-                  onClick={() => setShowAdminPanel(!showAdminPanel)}
-                  className="w-full bg-white text-kaisho-blue rounded-xl p-3 
-                           hover:bg-kaisho-blueIce transition-all border border-kaisho-greyLight shadow-sm flex items-center justify-between"
-                >
-                  <span className="text-sm md:text-base font-medium">
-                    {showAdminPanel ? '📁 Panel schliessen' : '⚙️ Admin-Panel öffnen'}
-                  </span>
-                  <svg 
-                    className={`w-5 h-5 transition-transform ${showAdminPanel ? 'rotate-180' : ''}`} 
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-              )}
-            </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Admin Panel - Collapsible */}
         {admin && canAdminManageClub() && showAdminPanel && (
@@ -364,13 +339,6 @@ export default function ClubPage() {
             }
           }}
           onAuthRequired={() => setShowAuthModal(true)}
-        />
-      )}
-
-      {/* Admin Login Modal */}
-      {showAdminLoginModal && (
-        <AdminLoginModal
-          onClose={() => setShowAdminLoginModal(false)}
         />
       )}
 

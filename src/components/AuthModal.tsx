@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { loginTrainer, registerTrainer } from '../lib/supabaseService';
+import { loginTrainer, registerTrainer, checkTrainerIsAdmin } from '../lib/supabaseService';
 import { useAuth } from '../context/AuthContext';
+import { useAdmin } from '../context/AdminContext';
 
 interface AuthModalProps {
   clubId: string;
@@ -16,6 +17,7 @@ export default function AuthModal({ clubId, clubName, onClose }: AuthModalProps)
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const { login } = useAuth();
+  const { loginAsAdmin } = useAdmin();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,6 +30,18 @@ export default function AuthModal({ clubId, clubName, onClose }: AuthModalProps)
         const trainer = await loginTrainer(email, password);
         
         login(trainer);
+        
+        // Prüfe ob Trainer auch Admin ist und logge automatisch ein
+        try {
+          const adminData = await checkTrainerIsAdmin(email, password);
+          if (adminData) {
+            loginAsAdmin(adminData);
+          }
+        } catch (adminErr) {
+          // Admin-Check fehlgeschlagen ist ok, Trainer ist dann einfach kein Admin
+          console.log('No admin privileges found');
+        }
+        
         onClose();
       } else {
         // Register
