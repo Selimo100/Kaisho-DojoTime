@@ -28,11 +28,10 @@ export default function TrainingDayModal({
   onAuthRequired,
 }: TrainingDayModalProps) {
   const { trainer, isAuthenticated } = useAuth();
-  const [selectedSlot, setSelectedSlot] = useState<TrainingSlot | null>(
-    slots.length === 1 && !slots[0].isCancelled ? slots[0] : null
-  );
+  const [selectedSlot, setSelectedSlot] = useState<TrainingSlot | null>(null);
   const [remark, setRemark] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
   const [isUncancelling, setIsUncancelling] = useState<number | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -65,14 +64,41 @@ export default function TrainingDayModal({
   const dateStr = format(date, 'yyyy-MM-dd');
   const dateEntries = entries.filter((e) => e.training_date === dateStr);
 
+  // Debug: Log entries und slots zum Debuggen
+  console.log('TrainingDayModal Debug:', {
+    dateStr,
+    dateEntries: dateEntries.map(e => ({ 
+      id: e.id, 
+      trainer_id: e.trainer_id, 
+      trainer_name: e.trainer_name,
+      training_day_id: e.training_day_id, 
+      override_id: e.override_id 
+    })),
+    slots: slots.map(s => ({ 
+      trainingDayId: s.trainingDayId, 
+      overrideId: s.overrideId, 
+      isExtra: s.isExtra,
+      timeStart: s.timeStart
+    })),
+    trainerId: trainer?.id
+  });
+
   // Prüfe ob Trainer bereits für einen Slot eingetragen ist
   const getTrainerEntryForSlot = (slot: TrainingSlot) => {
     if (!trainer) return null;
     return dateEntries.find(entry => {
-      if (slot.isExtra) {
-        return entry.trainer_id === trainer.id && entry.override_id === slot.overrideId;
+      if (slot.isExtra && slot.overrideId) {
+        // Für Extra-Trainings: Vergleiche override_id
+        const match = entry.trainer_id === trainer.id && 
+                      entry.override_id !== null && 
+                      entry.override_id === slot.overrideId;
+        return match;
       } else {
-        return entry.trainer_id === trainer.id && entry.training_day_id === slot.trainingDayId;
+        // Für reguläre Trainings: Vergleiche training_day_id
+        const match = entry.trainer_id === trainer.id && 
+                      entry.training_day_id !== null && 
+                      entry.training_day_id === slot.trainingDayId;
+        return match;
       }
     });
   };
@@ -80,10 +106,12 @@ export default function TrainingDayModal({
   // Zähle Einträge pro Slot
   const getEntriesForSlot = (slot: TrainingSlot) => {
     return dateEntries.filter(entry => {
-      if (slot.isExtra) {
-        return entry.override_id === slot.overrideId;
+      if (slot.isExtra && slot.overrideId) {
+        // Für Extra-Trainings: Vergleiche override_id
+        return entry.override_id !== null && entry.override_id === slot.overrideId;
       } else {
-        return entry.training_day_id === slot.trainingDayId;
+        // Für reguläre Trainings: Vergleiche training_day_id
+        return entry.training_day_id !== null && entry.training_day_id === slot.trainingDayId;
       }
     });
   };
@@ -92,11 +120,14 @@ export default function TrainingDayModal({
     e.preventDefault();
     if (!trainer || !selectedSlot || isLoading) return;
 
+    setSubmitError(null);
+
     // Prüfe ob bereits eingetragen
     const alreadyEntered = getTrainerEntryForSlot(selectedSlot);
     
     if (alreadyEntered) {
-      return; // Bereits eingetragen
+      setSubmitError('Du bist bereits für dieses Training eingetragen!');
+      return;
     }
 
     setIsLoading(true);
@@ -112,10 +143,16 @@ export default function TrainingDayModal({
       });
 
       setRemark('');
+      setSelectedSlot(null);
       onEntryAdded();
     } catch (error: any) {
       console.error('Error creating entry:', error);
-      // Fehler wird im Console geloggt
+      // Prüfe ob es ein Duplicate Key Error ist
+      if (error?.code === '23505') {
+        setSubmitError('Du bist bereits für dieses Training eingetragen! Bitte lade die Seite neu.');
+      } else {
+        setSubmitError('Fehler beim Eintragen. Bitte versuche es erneut.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -330,6 +367,10 @@ export default function TrainingDayModal({
               <div className="grid gap-2">
                 {dateEntries.map((entry) => {
                   const isOwnEntry = trainer && entry.trainer_id === trainer.id;
+                  // Finde den passenden Slot für diesen Eintrag
+                  const entrySlot = slots.find(s => 
+                    entry.override_id ? s.overrideId === entry.override_id : s.trainingDayId === entry.training_day_id
+                  );
                   
                   return (
                     <div
@@ -356,6 +397,17 @@ export default function TrainingDayModal({
                                 <span className="text-xs text-emerald-600 font-medium">(Du)</span>
                               )}
                             </div>
+                            {/* Zeige Trainingszeit */}
+                            {entrySlot && (
+                              <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
+                                <span>🕒</span>
+                                {entrySlot.timeStart.slice(0, 5)}
+                                {entrySlot.timeEnd && ` – ${entrySlot.timeEnd.slice(0, 5)}`}
+                                {entrySlot.isExtra && (
+                                  <span className="ml-1 text-purple-500">✨ Extra</span>
+                                )}
+                              </p>
+                            )}
                             {entry.remark && (
                               <p className="text-sm text-gray-500 mt-0.5">
                                 {entry.remark}
@@ -418,42 +470,63 @@ export default function TrainingDayModal({
                 </div>
               ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
-                {slots.filter(s => !s.isCancelled).length > 1 && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Trainingszeit wählen
-                    </label>
-                    <select
-                      value={selectedSlot ? (selectedSlot.isExtra ? `extra-${selectedSlot.overrideId}` : `day-${selectedSlot.trainingDayId}`) : ''}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        if (!value) {
-                          setSelectedSlot(null);
-                          return;
-                        }
-                        const idx = Number(value.split('-')[1]);
-                        const slot = slots.find(s => 
-                          value.startsWith('extra-') ? s.overrideId === idx : s.trainingDayId === idx
-                        );
-                        setSelectedSlot(slot || null);
-                      }}
-                      required
-                      className="w-full px-4 py-3.5 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 focus:ring-2 focus:ring-kaisho-blueLight focus:border-kaisho-blueLight transition-all duration-300 appearance-none cursor-pointer"
-                    >
-                      <option value="">Bitte wählen...</option>
-                      {slots.filter(s => !s.isCancelled).map((slot, idx) => (
+                {/* Fehlermeldung */}
+                {submitError && (
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+                    <p className="text-red-700 font-medium text-sm flex items-center gap-2">
+                      <span>⚠️</span> {submitError}
+                    </p>
+                  </div>
+                )}
+                
+                {/* Immer Trainingszeit-Auswahl anzeigen */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Trainingszeit wählen *
+                  </label>
+                  <select
+                    value={selectedSlot ? (selectedSlot.isExtra ? `extra-${selectedSlot.overrideId}` : `day-${selectedSlot.trainingDayId}`) : ''}
+                    onChange={(e) => {
+                      setSubmitError(null); // Clear error on selection change
+                      const value = e.target.value;
+                      if (!value) {
+                        setSelectedSlot(null);
+                        return;
+                      }
+                      const idx = Number(value.split('-')[1]);
+                      const slot = slots.find(s => 
+                        value.startsWith('extra-') ? s.overrideId === idx : s.trainingDayId === idx
+                      );
+                      setSelectedSlot(slot || null);
+                    }}
+                    required
+                    className="w-full px-4 py-3.5 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 focus:ring-2 focus:ring-kaisho-blueLight focus:border-kaisho-blueLight transition-all duration-300 appearance-none cursor-pointer"
+                  >
+                    <option value="">Bitte Training wählen...</option>
+                    {slots.filter(s => !s.isCancelled).map((slot, idx) => {
+                      const slotEntries = getEntriesForSlot(slot);
+                      const alreadyRegistered = getTrainerEntryForSlot(slot);
+                      return (
                         <option 
                           key={idx} 
                           value={slot.isExtra ? `extra-${slot.overrideId}` : `day-${slot.trainingDayId}`}
+                          disabled={!!alreadyRegistered}
                         >
                           {slot.timeStart.slice(0, 5)}
                           {slot.timeEnd && ` – ${slot.timeEnd.slice(0, 5)}`}
-                          {slot.isExtra && ' (Extra-Training)'}
+                          {slot.isExtra && ' ✨ Extra-Training'}
+                          {` (✓ ${slotEntries.length} Trainer)`}
+                          {alreadyRegistered && ' - Bereits eingetragen'}
                         </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+                      );
+                    })}
+                  </select>
+                  {slots.filter(s => !s.isCancelled).length > 1 && (
+                    <p className="text-xs text-gray-500 mt-2">
+                      ⚠️ Wählen Sie das Training, für das Sie sich eintragen möchten
+                    </p>
+                  )}
+                </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">

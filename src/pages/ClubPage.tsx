@@ -57,6 +57,12 @@ export default function ClubPage() {
           getOverridesByClub(clubData.id),
         ]);
 
+        console.log('ClubPage Initial Load:', {
+          entriesCount: allEntries.length,
+          entries: allEntries,
+          overridesCount: overridesData.length
+        });
+
         setTrainingDays(days);
         setEntries(allEntries);
         setOverrides(overridesData);
@@ -83,6 +89,7 @@ export default function ClubPage() {
     if (!club) return;
     try {
       const allEntries = await getEntriesByClubAndDay(club.id);
+      console.log('ClubPage: Loaded entries:', allEntries.length, allEntries);
       setEntries(allEntries);
     } catch (error) {
       console.error('Error refreshing entries:', error);
@@ -317,9 +324,18 @@ export default function ClubPage() {
           entries={entries.filter((e) => {
             // Filter entries for selected date
             const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
-            return selectedSlots.some((slot) => 
-              slot.date === selectedDateStr && slot.trainingDayId === e.training_day_id
-            );
+            if (e.training_date !== selectedDateStr) return false;
+            
+            // Check if entry matches any slot (regular or extra training)
+            return selectedSlots.some((slot) => {
+              if (slot.isExtra && slot.overrideId) {
+                // Extra-Training: match by override_id
+                return e.override_id === slot.overrideId;
+              } else {
+                // Regular Training: match by training_day_id
+                return e.training_day_id === slot.trainingDayId;
+              }
+            });
           })}
           clubId={club.id}
           isAdmin={!!(admin && canAdminManageClub())}

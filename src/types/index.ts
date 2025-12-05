@@ -110,7 +110,7 @@ export interface Admin {
 }
 
 export interface AdminLoginInput {
-  username: string;
+  email: string;
   password: string;
 }
 

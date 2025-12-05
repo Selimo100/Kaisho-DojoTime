@@ -393,7 +393,7 @@ export async function deleteOverride(id: number): Promise<void> {
 
 export async function loginAdmin(input: AdminLoginInput): Promise<Admin | null> {
   const { data, error } = await supabase.rpc('verify_admin', {
-    p_username: input.username,
+    p_username: input.email,
     p_password: input.password,
   });
 

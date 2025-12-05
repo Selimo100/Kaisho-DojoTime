@@ -8,7 +8,7 @@ interface AdminLoginModalProps {
 
 export default function AdminLoginModal({ onClose }: AdminLoginModalProps) {
   const { loginAsAdmin } = useAdmin();
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -19,7 +19,7 @@ export default function AdminLoginModal({ onClose }: AdminLoginModalProps) {
     setIsLoading(true);
 
     try {
-      const adminData = await loginAdmin({ username, password });
+      const adminData = await loginAdmin({ email, password });
       
       if (!adminData) {
         setError('Ungültige Anmeldedaten');
@@ -58,15 +58,15 @@ export default function AdminLoginModal({ onClose }: AdminLoginModalProps) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-semibold text-white mb-2">
-              Benutzername
+              E-Mail-Adresse
             </label>
             <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
               className="w-full px-4 py-3 bg-kaisho-darkPanel/50 backdrop-blur-sm border border-kaisho-blueLight/30 rounded-xl text-white placeholder-kaisho-greyLight/50 focus:ring-2 focus:ring-kaisho-blueLight focus:border-kaisho-blueLight transition-all"
-              placeholder="Benutzername eingeben"
+              placeholder="E-Mail-Adresse eingeben"
             />
           </div>
 

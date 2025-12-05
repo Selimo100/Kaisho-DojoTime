@@ -52,29 +52,29 @@ export default function AddExtraTrainingModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-3 md:p-4">
-      <div className="bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900 rounded-2xl shadow-2xl max-w-md w-full p-6 md:p-8 border border-blue-400/30">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-3 md:p-4">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 md:p-8 border border-gray-200">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl md:text-2xl font-bold text-white">
+          <h2 className="text-xl md:text-2xl font-bold text-gray-800">
             ✨ Extra-Training hinzufügen
           </h2>
           <button
             onClick={onClose}
-            className="text-white/80 hover:text-white text-3xl font-bold w-10 h-10 flex items-center justify-center rounded-lg hover:bg-white/10 transition-all active:scale-95"
+            className="text-gray-500 hover:text-gray-700 text-3xl font-bold w-10 h-10 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-all active:scale-95"
           >
             ×
           </button>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 md:p-4 bg-red-500/20 backdrop-blur-sm border border-red-400/50 text-red-100 rounded-xl font-medium">
+          <div className="mb-4 p-3 md:p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl font-medium">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-semibold text-white mb-2">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
               Datum *
             </label>
             <input
@@ -83,13 +83,13 @@ export default function AddExtraTrainingModal({
               onChange={(e) => setSelectedDate(e.target.value)}
               required
               min={format(new Date(), 'yyyy-MM-dd')}
-              className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/30 rounded-xl text-white font-medium focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+              className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 font-medium focus:ring-2 focus:ring-kaisho-blueLight focus:border-kaisho-blueLight transition-all"
             />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-semibold text-white mb-2">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Startzeit *
               </label>
               <input
@@ -97,25 +97,25 @@ export default function AddExtraTrainingModal({
                 value={timeStart}
                 onChange={(e) => setTimeStart(e.target.value)}
                 required
-                className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/30 rounded-xl text-white font-medium focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 font-medium focus:ring-2 focus:ring-kaisho-blueLight focus:border-kaisho-blueLight transition-all"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-white mb-2">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Endzeit
               </label>
               <input
                 type="time"
                 value={timeEnd}
                 onChange={(e) => setTimeEnd(e.target.value)}
-                className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/30 rounded-xl text-white font-medium focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 font-medium focus:ring-2 focus:ring-kaisho-blueLight focus:border-kaisho-blueLight transition-all"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-white mb-2">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
               Grund / Bemerkung
             </label>
             <textarea
@@ -123,7 +123,7 @@ export default function AddExtraTrainingModal({
               onChange={(e) => setReason(e.target.value)}
               rows={3}
               placeholder="z.B. Zusätzliches Training für Prüfungsvorbereitung"
-              className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/30 rounded-xl text-white placeholder-white/50 font-medium focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+              className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-400 font-medium focus:ring-2 focus:ring-kaisho-blueLight focus:border-kaisho-blueLight transition-all"
             />
           </div>
 
@@ -131,22 +131,22 @@ export default function AddExtraTrainingModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-3 px-4 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all font-semibold border border-white/30 active:scale-95"
+              className="flex-1 py-3 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-all font-semibold border border-gray-300 active:scale-95"
             >
               Abbrechen
             </button>
             <button
               type="submit"
               disabled={isLoading}
-              className="flex-1 py-3 px-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl transition-all font-bold shadow-lg active:scale-95 disabled:opacity-50"
+              className="flex-1 py-3 px-4 bg-kaisho-blue hover:bg-kaisho-blueDark text-white rounded-xl transition-all font-bold shadow-lg active:scale-95 disabled:opacity-50"
             >
               {isLoading ? '⏳ Speichern...' : '✨ Hinzufügen'}
             </button>
           </div>
         </form>
 
-        <div className="mt-4 p-3 bg-blue-500/20 backdrop-blur-sm border border-blue-400/50 rounded-xl">
-          <p className="text-xs text-blue-100">
+        <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+          <p className="text-xs text-amber-700">
             💡 <strong>Hinweis:</strong> Extra-Trainings erscheinen im Kalender mit einem ✨ Symbol
             und können von Trainern wie reguläre Trainings belegt werden.
           </p>
