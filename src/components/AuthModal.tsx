@@ -24,15 +24,8 @@ export default function AuthModal({ clubId, clubName, onClose }: AuthModalProps)
 
     try {
       if (isLogin) {
-        // Login
+        // Login - Trainer kann sich bei jedem Club einloggen und eintragen
         const trainer = await loginTrainer(email, password);
-        
-        // Prüfe ob Trainer zum richtigen Verein gehört
-        if (trainer.club_id !== clubId) {
-          setError('Sie gehören nicht zu diesem Verein');
-          setIsLoading(false);
-          return;
-        }
         
         login(trainer);
         onClose();
