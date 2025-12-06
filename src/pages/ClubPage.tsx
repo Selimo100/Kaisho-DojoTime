@@ -5,7 +5,6 @@ import type { Club, TrainingDay, TrainingEntry, TrainingSlot } from '../types';
 import {
   getClubBySlug,
   getTrainingDaysByClub,
-  getEntriesByClubAndDay,
   getEntriesWithScheduledTrainers,
   getOverridesByClub,
 } from '../lib/supabaseService';

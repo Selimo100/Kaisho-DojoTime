@@ -1,5 +1,4 @@
 import { supabase } from './supabaseClient';
-import { format } from 'date-fns';
 import type {
   Club,
   TrainingDay,
@@ -10,8 +9,6 @@ import type {
   AdminLoginInput,
   CreateAdminInput,
   Trainer,
-  CreateTrainerWithScheduleInput,
-  TrainerSchedule,
 } from '../types';
 
 // ========== CLUBS ==========
