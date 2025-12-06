@@ -20,6 +20,7 @@ import { useAdmin } from '../context/AdminContext';
 import AddExtraTrainingModal from './AddExtraTrainingModal';
 import EditTrainingDayModal from './EditTrainingDayModal';
 import EditExtraTrainingModal from './EditExtraTrainingModal';
+import CreateTrainerModal from './CreateTrainerModal';
 
 interface AdminPanelProps {
   club: Club;
@@ -55,10 +56,13 @@ export default function AdminPanel({
   const [isTrainingDaysOpen, setIsTrainingDaysOpen] = useState(true);
   const [isAdminManagementOpen, _setIsAdminManagementOpen] = useState(false);
   const [isTrainerManagementOpen, setIsTrainerManagementOpen] = useState(false);
+  const [isExtraTrainingsOpen, setIsExtraTrainingsOpen] = useState(false);
   
   // Trainer Management State
   const [trainers, setTrainers] = useState<Trainer[]>([]);
   const [loadingTrainers, setLoadingTrainers] = useState(false);
+  const [showCreateTrainerModal, setShowCreateTrainerModal] = useState(false);
+  const [isCreateTrainerSectionOpen, setIsCreateTrainerSectionOpen] = useState(false);
   
   // Extra Training Modal State
   const [showExtraTrainingModal, setShowExtraTrainingModal] = useState(false);
@@ -406,46 +410,57 @@ export default function AdminPanel({
                 )}
               </div>
               
-              {/* Extra Trainings List */}
+              {/* Extra Trainings - Collapsible */}
               {extraTrainings.length > 0 && (
                 <div className="border-t border-kaisho-greyLight pt-4">
-                  <h4 className="text-sm md:text-base font-bold text-kaisho-blue mb-3">
-                    ✨ Extra-Trainings ({extraTrainings.length})
-                  </h4>
-                  <div className="space-y-2">
-                    {extraTrainings.map((extra) => (
-                      <div
-                        key={extra.id}
-                        className="flex flex-col md:flex-row md:justify-between md:items-center gap-2 md:gap-3 p-3 bg-kaisho-blueIce rounded-xl border border-kaisho-blueLight/30"
-                      >
-                        <div className="flex-1">
-                          <div className="font-bold text-kaisho-blue text-sm md:text-base">
-                            {new Date(extra.override_date).toLocaleDateString('de-DE')} - {extra.time_start?.slice(0, 5)}
-                            {extra.time_end && ` - ${extra.time_end.slice(0, 5)}`}
-                          </div>
-                          {extra.reason && (
-                            <div className="text-xs md:text-sm text-gray-600 font-medium">
-                              {extra.reason}
+                  <button
+                    onClick={() => setIsExtraTrainingsOpen(!isExtraTrainingsOpen)}
+                    className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-purple-50 to-kaisho-blueIce rounded-xl hover:from-purple-100 hover:to-kaisho-blueIce/80 transition-all border border-purple-200"
+                  >
+                    <span className="text-sm md:text-base font-bold text-purple-700">
+                      ✨ Extra-Trainings ({extraTrainings.length})
+                    </span>
+                    <span className="text-2xl text-purple-600 transition-transform duration-200" style={{ transform: isExtraTrainingsOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                      ▼
+                    </span>
+                  </button>
+                  
+                  {isExtraTrainingsOpen && (
+                    <div className="space-y-2 mt-3">
+                      {extraTrainings.map((extra) => (
+                        <div
+                          key={extra.id}
+                          className="flex flex-col md:flex-row md:justify-between md:items-center gap-2 md:gap-3 p-3 bg-kaisho-blueIce rounded-xl border border-kaisho-blueLight/30"
+                        >
+                          <div className="flex-1">
+                            <div className="font-bold text-kaisho-blue text-sm md:text-base">
+                              {new Date(extra.override_date).toLocaleDateString('de-DE')} - {extra.time_start?.slice(0, 5)}
+                              {extra.time_end && ` - ${extra.time_end.slice(0, 5)}`}
                             </div>
-                          )}
+                            {extra.reason && (
+                              <div className="text-xs md:text-sm text-gray-600 font-medium">
+                                {extra.reason}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleEditExtraTraining(extra)}
+                              className="px-3 py-2 bg-kaisho-blueLight hover:bg-kaisho-blue text-white text-xs font-semibold rounded-lg transition-all active:scale-95 shadow-md"
+                            >
+                              ✏️
+                            </button>
+                            <button
+                              onClick={() => handleDeleteExtraTraining(extra.id)}
+                              className="px-3 py-2 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold rounded-lg transition-all active:scale-95 shadow-md"
+                            >
+                              🗑
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleEditExtraTraining(extra)}
-                            className="px-3 py-2 bg-kaisho-blueLight hover:bg-kaisho-blue text-white text-xs font-semibold rounded-lg transition-all active:scale-95 shadow-md"
-                          >
-                            ✏️ Bearbeiten
-                          </button>
-                          <button
-                            onClick={() => handleDeleteExtraTraining(extra.id)}
-                            className="px-3 py-2 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold rounded-lg transition-all active:scale-95 shadow-md"
-                          >
-                            🗑 Löschen
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -685,6 +700,46 @@ export default function AdminPanel({
             )}
           </div>
         )}
+        
+        {/* Create Trainer Section - Only for Super Admins */}
+        {isSuperAdmin && (
+          <div className="border border-kaisho-blue/30 rounded-xl overflow-hidden bg-gradient-to-br from-emerald-500/10 to-kaisho-blue/10">
+            <button
+              onClick={() => setIsCreateTrainerSectionOpen(!isCreateTrainerSectionOpen)}
+              className="w-full flex justify-between items-center p-3 md:p-4 hover:bg-emerald-500/10 transition-all active:scale-[0.99]"
+            >
+              <h3 className="text-base md:text-lg font-bold text-kaisho-blue">
+                ➕ Neuen Trainer erstellen
+              </h3>
+              <span className="text-2xl md:text-3xl text-kaisho-blue font-bold">
+                {isCreateTrainerSectionOpen ? '−' : '+'}
+              </span>
+            </button>
+            
+            {isCreateTrainerSectionOpen && (
+              <div className="p-3 md:p-4 border-t border-kaisho-blue/20 bg-white/50">
+                <p className="text-sm text-gray-700 mb-4">
+                  Erstellen Sie einen neuen Trainer für diesen Club und legen Sie seinen regelmässigen Trainingsplan fest. 
+                  Dies ist besonders nützlich für ältere Trainer oder Haupttrainer, die die Website nicht selbst bedienen können.
+                </p>
+                
+                <button
+                  onClick={() => setShowCreateTrainerModal(true)}
+                  className="w-full px-6 py-4 bg-gradient-to-r from-emerald-500 to-kaisho-blueLight hover:from-emerald-600 hover:to-kaisho-blue text-white font-bold rounded-xl transition-all active:scale-95 shadow-lg text-base md:text-lg"
+                >
+                  ➕ Trainer mit Trainingsplan erstellen
+                </button>
+                
+                <div className="mt-4 bg-kaisho-blueIce/50 rounded-xl p-3 border border-kaisho-blueLight/30">
+                  <p className="text-xs text-gray-600 font-medium">
+                    <span className="font-bold">💡 Tipp:</span> Sie können festlegen, an welchen Trainingstagen der Trainer regelmässig 
+                    verfügbar ist und bis wann (z.B. jeden Donnerstag bis 2027). Der Trainer erhält Login-Daten und kann sich später selbst eintragen.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Extra Training Modal */}
@@ -722,6 +777,21 @@ export default function AdminPanel({
           onSuccess={() => {
             loadExtraTrainings();
             onTrainingDayAdded(); // Refresh calendar
+          }}
+        />
+      )}
+      
+      {/* Create Trainer Modal */}
+      {showCreateTrainerModal && (
+        <CreateTrainerModal
+          clubId={club.id}
+          clubName={club.name}
+          trainingDays={trainingDays}
+          adminId={admin?.id}
+          onClose={() => setShowCreateTrainerModal(false)}
+          onSuccess={() => {
+            loadTrainers();
+            onTrainingDayAdded(); // Refresh calendar to show new trainer assignments
           }}
         />
       )}

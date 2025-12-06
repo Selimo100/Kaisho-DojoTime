@@ -77,7 +77,10 @@ export default function TrainingCalendar({
 
   const handleDayClick = (date: Date) => {
     const daySlots = getSlotsForDate(date, slots);
-    onDateClick(date, daySlots);
+    // Events und Trainings sind beide klickbar - ClubPage entscheidet welches Modal
+    if (daySlots.length > 0) {
+      onDateClick(date, daySlots);
+    }
   };
 
   const getDayClasses = (date: Date): string => {
@@ -87,8 +90,9 @@ export default function TrainingCalendar({
     const isCurrentMonth = isSameMonth(date, currentDate);
     const today = isToday(date);
     
-    // Check if any slot has no trainers
+    // Check if any slot has no trainers (ignore events)
     const hasSlotWithNoTrainer = daySlots.some(slot => {
+      if (slot.isEvent) return false;
       const slotEntries = getEntriesForSlot(slot);
       return slotEntries.length === 0 && !slot.isCancelled;
     });
@@ -127,7 +131,7 @@ export default function TrainingCalendar({
           <div className="space-y-0.5 md:space-y-1 flex-1 overflow-y-auto">
             {daySlots.slice(0, isMobile ? 2 : 4).map((slot, idx) => {
               const slotEntries = getEntriesForSlot(slot);
-              const hasNoTrainer = slotEntries.length === 0 && !slot.isCancelled;
+              const hasNoTrainer = slotEntries.length === 0 && !slot.isCancelled && !slot.isEvent;
               
               return (
                 <div
@@ -135,6 +139,8 @@ export default function TrainingCalendar({
                   className={`text-[10px] md:text-xs px-1.5 md:px-2 py-0.5 md:py-1 rounded-md font-semibold flex items-center gap-1 ${
                     slot.isCancelled
                       ? 'bg-gray-500/60 text-white/60 line-through'
+                      : slot.isEvent
+                      ? 'bg-sky-400/80 text-white'
                       : hasNoTrainer
                       ? 'bg-red-500/80 text-white animate-pulse'
                       : slot.isExtra
@@ -143,7 +149,8 @@ export default function TrainingCalendar({
                   }`}
                 >
                   <span>{slot.timeStart.slice(0, 5)}</span>
-                  {slot.isExtra && <span>✨</span>}
+                  {slot.isEvent && <span>📅</span>}
+                  {slot.isExtra && !slot.isEvent && <span>✨</span>}
                   {hasNoTrainer && <span>⚠️</span>}
                   {slot.isCancelled && <span className="no-underline">❌</span>}
                 </div>

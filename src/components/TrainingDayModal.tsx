@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import type { TrainingSlot, TrainingEntry } from '../types';
 import { useAuth } from '../context/AuthContext';
-import { createTrainingEntry, deleteTrainingEntry, deleteOverride } from '../lib/supabaseService';
+import { createTrainingEntry, deleteTrainingEntry, deleteOverride, cancelScheduledTrainer } from '../lib/supabaseService';
 import CancelTrainingModal from './CancelTrainingModal';
 
 interface TrainingDayModalProps {
@@ -165,6 +165,20 @@ export default function TrainingDayModal({
       onEntryAdded(); // Refresh data
     } catch (error) {
       console.error('Error deleting entry:', error);
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
+  const handleCancelScheduledTrainer = async (entry: any) => {
+    if (!entry.schedule_id) return;
+    
+    setIsDeleting(entry.id);
+    try {
+      await cancelScheduledTrainer(entry.schedule_id, entry.training_date, 'Trainer nicht verfügbar');
+      onEntryAdded(); // Refresh data
+    } catch (error) {
+      console.error('Error canceling scheduled trainer:', error);
     } finally {
       setIsDeleting(null);
     }
@@ -367,6 +381,7 @@ export default function TrainingDayModal({
               <div className="grid gap-2">
                 {dateEntries.map((entry) => {
                   const isOwnEntry = trainer && entry.trainer_id === trainer.id;
+                  const isScheduledEntry = entry.id < 0; // Virtuelle Einträge haben negative IDs
                   // Finde den passenden Slot für diesen Eintrag
                   const entrySlot = slots.find(s => 
                     entry.override_id ? s.overrideId === entry.override_id : s.trainingDayId === entry.training_day_id
@@ -376,7 +391,9 @@ export default function TrainingDayModal({
                     <div
                       key={entry.id}
                       className={`group relative overflow-hidden rounded-xl border transition-all duration-300 ${
-                        isOwnEntry 
+                        isScheduledEntry
+                          ? 'bg-blue-50 border-blue-300'
+                          : isOwnEntry 
                           ? 'bg-emerald-50 border-emerald-300' 
                           : 'bg-gray-50 border-gray-200 hover:bg-kaisho-blueIce'
                       }`}
@@ -384,7 +401,9 @@ export default function TrainingDayModal({
                       <div className="p-4 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
                           <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold ${
-                            isOwnEntry 
+                            isScheduledEntry
+                              ? 'bg-blue-200 text-blue-700'
+                              : isOwnEntry 
                               ? 'bg-emerald-200 text-emerald-700' 
                               : 'bg-kaisho-blueIce text-kaisho-blue'
                           }`}>
@@ -393,6 +412,9 @@ export default function TrainingDayModal({
                           <div>
                             <div className="font-semibold text-gray-800 flex items-center gap-2">
                               {entry.trainer_name}
+                              {isScheduledEntry && (
+                                <span className="text-xs text-blue-600 font-medium">📅 Geplant</span>
+                              )}
                               {isOwnEntry && (
                                 <span className="text-xs text-emerald-600 font-medium">(Du)</span>
                               )}
@@ -416,13 +438,29 @@ export default function TrainingDayModal({
                           </div>
                         </div>
                         
-                        {isOwnEntry && (
+                        {isOwnEntry && !isScheduledEntry && (
                           <button
                             onClick={() => handleUnregister(entry.id)}
                             disabled={isDeleting === entry.id}
                             className="opacity-0 group-hover:opacity-100 px-3 py-1.5 bg-red-500/80 hover:bg-red-600 text-white text-xs font-semibold rounded-lg transition-all duration-300 active:scale-95"
                           >
                             {isDeleting === entry.id ? '...' : '✕'}
+                          </button>
+                        )}
+                        
+                        {isScheduledEntry && (isOwnEntry || isAdmin) && (
+                          <button
+                            onClick={() => handleCancelScheduledTrainer(entry)}
+                            disabled={isDeleting === entry.id}
+                            className="opacity-0 group-hover:opacity-100 px-3 py-1.5 bg-orange-500/80 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg transition-all duration-300 active:scale-95 flex items-center gap-1"
+                            title="Geplanten Trainer für diesen Tag austragen"
+                          >
+                            {isDeleting === entry.id ? '...' : (
+                              <>
+                                <span>↩</span>
+                                <span className="hidden md:inline">Austragen</span>
+                              </>
+                            )}
                           </button>
                         )}
                       </div>

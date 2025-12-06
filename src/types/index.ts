@@ -4,6 +4,8 @@ export interface Club {
   city: string;
   slug: string;
   admin_password: string;
+  address?: string;
+  website_url?: string;
 }
 
 export interface TrainingDay {
@@ -72,6 +74,7 @@ export interface TrainingOverride {
   time_end: string | null;
   action: 'cancel' | 'extra';
   reason: string | null;
+  requires_trainers?: boolean; // Für Events: false = reine Info-Anzeige
   created_at: string;
   created_by: string | null;
 }
@@ -96,6 +99,7 @@ export interface TrainingSlot {
   overrideId?: number; // Für Extra-Trainings
   isCancelled: boolean;
   isExtra: boolean;
+  isEvent: boolean; // Für reine Info-Events ohne Trainer
   reason?: string;
 }
 
@@ -121,4 +125,31 @@ export interface CreateAdminInput {
   full_name?: string;
   is_super_admin?: boolean;
   club_id?: string;
+}
+
+export interface TrainerSchedule {
+  id: number;
+  trainer_id: string;
+  training_day_id: number;
+  start_date: string; // YYYY-MM-DD format
+  end_date: string | null; // YYYY-MM-DD format, NULL = unbegrenzt
+  is_active: boolean;
+  created_at: string;
+  created_by_admin_id?: number;
+  notes?: string;
+}
+
+export interface CreateTrainerScheduleInput {
+  training_day_id: number;
+  start_date: string;
+  end_date?: string | null;
+  notes?: string;
+}
+
+export interface CreateTrainerWithScheduleInput {
+  email: string;
+  name: string;
+  password: string;
+  club_id: string;
+  schedules: CreateTrainerScheduleInput[];
 }

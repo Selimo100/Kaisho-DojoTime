@@ -55,6 +55,7 @@ export function calculateTrainingSlotsForMonth(
         overrideId: cancelOverride?.id, // Override-ID für "Absage aufheben"
         isCancelled: !!cancelOverride,
         isExtra: false,
+        isEvent: false,
         reason: cancelOverride?.reason || undefined,
       });
     });
@@ -66,6 +67,7 @@ export function calculateTrainingSlotsForMonth(
     .forEach((override) => {
       const date = parseISO(override.override_date);
       if (date >= start && date <= end) {
+        const isEvent = override.requires_trainers === false;
         slots.push({
           date: override.override_date,
           weekday: getDay(date),
@@ -75,6 +77,7 @@ export function calculateTrainingSlotsForMonth(
           overrideId: override.id, // Wichtig für Extra-Trainings!
           isCancelled: false,
           isExtra: true,
+          isEvent: isEvent,
           reason: override.reason || undefined,
         });
       }

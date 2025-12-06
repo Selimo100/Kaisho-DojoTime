@@ -6,6 +6,7 @@ import {
   getClubBySlug,
   getTrainingDaysByClub,
   getEntriesByClubAndDay,
+  getEntriesWithScheduledTrainers,
   getOverridesByClub,
 } from '../lib/supabaseService';
 import TrainingCalendar from '../components/TrainingCalendar';
@@ -13,6 +14,8 @@ import TrainingDayModal from '../components/TrainingDayModal';
 import AdminPanel from '../components/AdminPanel';
 import AuthModal from '../components/AuthModal';
 import LoadingPage from '../components/LoadingPage';
+import QuickEventModal from '../components/QuickEventModal';
+import EventInfoModal from '../components/EventInfoModal';
 import { useAuth } from '../context/AuthContext';
 import { useAdmin } from '../context/AdminContext';
 import { calculateTrainingSlotsForMonth } from '../utils/calendarUtils';
@@ -37,9 +40,12 @@ export default function ClubPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedSlots, setSelectedSlots] = useState<TrainingSlot[]>([]);
+  const [selectedEvent, setSelectedEvent] = useState<TrainingSlot | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showQuickEventModal, setShowQuickEventModal] = useState(false);
+  const [quickEventDate, setQuickEventDate] = useState<Date | null>(null);
 
   useEffect(() => {
     if (!slug) return;
@@ -55,10 +61,14 @@ export default function ClubPage() {
 
         setClub(clubData);
 
+        // Lade Daten für aktuellen Monat plus 1 Monat vorher und nachher
+        const startDate = format(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1), 'yyyy-MM-dd');
+        const endDate = format(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 2, 0), 'yyyy-MM-dd');
+
         const [days, allEntries, overridesData] = await Promise.all([
           getTrainingDaysByClub(clubData.id),
-          getEntriesByClubAndDay(clubData.id),
-          getOverridesByClub(clubData.id),
+          getEntriesWithScheduledTrainers(clubData.id, startDate, endDate),
+          getOverridesByClub(clubData.id, startDate, endDate),
         ]);
 
         console.log('ClubPage Initial Load:', {
@@ -92,7 +102,9 @@ export default function ClubPage() {
   const handleRefreshEntries = async () => {
     if (!club) return;
     try {
-      const allEntries = await getEntriesByClubAndDay(club.id);
+      const startDate = format(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1), 'yyyy-MM-dd');
+      const endDate = format(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 2, 0), 'yyyy-MM-dd');
+      const allEntries = await getEntriesWithScheduledTrainers(club.id, startDate, endDate);
       console.log('ClubPage: Loaded entries:', allEntries.length, allEntries);
       setEntries(allEntries);
     } catch (error) {
@@ -274,19 +286,48 @@ export default function ClubPage() {
             </div>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl p-3 md:p-6 border border-kaisho-greyLight shadow-md">
-            <TrainingCalendar
-              currentDate={currentMonth}
-              slots={slots}
-              entries={entries}
-              onDateClick={(date, dateSlots) => {
-                setSelectedDate(date);
-                setSelectedSlots(dateSlots);
-              }}
-              onMonthChange={(date: Date) => {
-                setCurrentMonth(date);
-              }}
-            />
+          <div className="relative">
+            <div className="bg-white rounded-2xl p-3 md:p-6 border border-kaisho-greyLight shadow-md">
+              <TrainingCalendar
+                currentDate={currentMonth}
+                slots={slots}
+                entries={entries}
+                onDateClick={(date, dateSlots) => {
+                  // Wenn nur ein Event (und kein Training), zeige EventInfoModal
+                  if (dateSlots.length === 1 && dateSlots[0].isEvent) {
+                    setSelectedEvent(dateSlots[0]);
+                  } else {
+                    // Sonst zeige TrainingDayModal (filtert Events automatisch)
+                    setSelectedDate(date);
+                    setSelectedSlots(dateSlots);
+                  }
+                }}
+                onMonthChange={(date: Date) => {
+                  setCurrentMonth(date);
+                }}
+              />
+            </div>
+            
+            {/* Floating Event Button - Only for Admins */}
+            {admin && canAdminManageClub() && (
+              <div className="fixed bottom-6 right-6 z-40">
+                <button
+                  onClick={() => {
+                    setQuickEventDate(new Date());
+                    setShowQuickEventModal(true);
+                  }}
+                  className="group relative px-4 py-3 bg-sky-400 hover:bg-sky-500 text-white font-semibold rounded-xl shadow-lg transition-all active:scale-95 flex items-center gap-2"
+                >
+                  <span className="text-lg">📅</span>
+                  <span className="hidden sm:inline text-sm">Event</span>
+                  
+                  {/* Tooltip */}
+                  <div className="absolute bottom-full right-0 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                    Event erstellen
+                  </div>
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -348,6 +389,31 @@ export default function ClubPage() {
           clubId={club.id}
           clubName={club.name}
           onClose={() => setShowAuthModal(false)}
+        />
+      )}
+
+      {/* Quick Event Modal */}
+      {showQuickEventModal && quickEventDate && club && (
+        <QuickEventModal
+          clubId={club.id}
+          date={quickEventDate}
+          onClose={() => {
+            setShowQuickEventModal(false);
+            setQuickEventDate(null);
+          }}
+          onSuccess={async () => {
+            // Refresh calendar data
+            await handleRefreshTrainingDays();
+            handleRefreshEntries();
+          }}
+        />
+      )}
+
+      {/* Event Info Modal */}
+      {selectedEvent && (
+        <EventInfoModal
+          event={selectedEvent}
+          onClose={() => setSelectedEvent(null)}
         />
       )}
     </div>

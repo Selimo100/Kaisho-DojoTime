@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { format } from 'date-fns';
 import type {
   Club,
   TrainingDay,
@@ -9,6 +10,8 @@ import type {
   AdminLoginInput,
   CreateAdminInput,
   Trainer,
+  CreateTrainerWithScheduleInput,
+  TrainerSchedule,
 } from '../types';
 
 // ========== CLUBS ==========
@@ -192,6 +195,46 @@ export async function getEntriesByClubAndDay(
   return data || [];
 }
 
+// Lädt Einträge inkl. geplanter Trainer aus trainer_schedules
+export async function getEntriesWithScheduledTrainers(
+  clubId: string,
+  startDate: string,
+  endDate: string
+): Promise<(TrainingEntry & { is_scheduled?: boolean; schedule_id?: number })[]> {
+  const { data, error } = await supabase.rpc('get_entries_with_scheduled_trainers', {
+    p_club_id: clubId,
+    p_start_date: startDate,
+    p_end_date: endDate,
+  });
+
+  if (error) {
+    console.error('Error fetching entries with scheduled trainers:', error);
+    throw error;
+  }
+
+  return data || [];
+}
+
+// Trägt einen geplanten Trainer für einen bestimmten Tag aus
+export async function cancelScheduledTrainer(
+  scheduleId: number,
+  date: string,
+  reason?: string
+): Promise<void> {
+  const { error } = await supabase
+    .from('trainer_schedule_exceptions')
+    .insert({
+      trainer_schedule_id: scheduleId,
+      exception_date: date,
+      reason: reason || null,
+    });
+
+  if (error) {
+    console.error('Error canceling scheduled trainer:', error);
+    throw error;
+  }
+}
+
 export async function createTrainingEntry(
   input: CreateTrainingEntryInput & { trainer_id: string }
 ): Promise<TrainingEntry> {
@@ -352,6 +395,7 @@ export async function createOverride(input: {
   time_start?: string;
   time_end?: string;
   reason?: string;
+  requires_trainers?: boolean;
   created_by?: string;
 }): Promise<any> {
   const { data, error } = await supabase
@@ -364,6 +408,7 @@ export async function createOverride(input: {
       time_start: input.time_start || null,
       time_end: input.time_end || null,
       reason: input.reason || null,
+      requires_trainers: input.requires_trainers !== undefined ? input.requires_trainers : true,
       created_by: input.created_by || null,
     })
     .select()
@@ -474,4 +519,121 @@ export async function checkTrainerIsAdmin(email: string, password: string): Prom
   if (!data || data.length === 0) return null;
 
   return data[0];
+}
+
+// ==================== Trainer Schedule Functions ====================
+
+export async function createTrainerWithSchedule(
+  input: {
+    email: string;
+    name: string;
+    password: string;
+    club_id: string;
+    schedules: Array<{
+      training_day_id: number;
+      start_date: string;
+      end_date?: string | null;
+      notes?: string;
+    }>;
+  },
+  adminId?: number
+): Promise<string> {
+  const schedulesJson = input.schedules.map(s => ({
+    training_day_id: s.training_day_id,
+    start_date: s.start_date,
+    end_date: s.end_date || null,
+    notes: s.notes || null,
+  }));
+
+  const { data, error } = await supabase.rpc('create_trainer_from_schedule', {
+    p_email: input.email,
+    p_name: input.name,
+    p_password: input.password,
+    p_club_id: input.club_id,
+    p_training_schedules: schedulesJson,
+    p_admin_id: adminId || null,
+  });
+
+  if (error) {
+    console.error('Error creating trainer with schedule:', error);
+    throw error;
+  }
+
+  return data;
+}
+
+export async function getTrainerSchedules(trainerId: string): Promise<any[]> {
+  const { data, error } = await supabase
+    .from('trainer_schedules')
+    .select(`
+      *,
+      training_days:training_day_id (
+        id,
+        weekday,
+        time_start,
+        time_end
+      )
+    `)
+    .eq('trainer_id', trainerId)
+    .eq('is_active', true)
+    .order('start_date');
+
+  if (error) {
+    console.error('Error fetching trainer schedules:', error);
+    throw error;
+  }
+
+  return data || [];
+}
+
+export async function updateTrainerSchedule(
+  scheduleId: number,
+  updates: {
+    start_date?: string;
+    end_date?: string | null;
+    is_active?: boolean;
+    notes?: string;
+  }
+): Promise<void> {
+  const { error } = await supabase.rpc('update_trainer_schedule', {
+    p_schedule_id: scheduleId,
+    p_start_date: updates.start_date || null,
+    p_end_date: updates.end_date || null,
+    p_is_active: updates.is_active !== undefined ? updates.is_active : null,
+    p_notes: updates.notes || null,
+  });
+
+  if (error) {
+    console.error('Error updating trainer schedule:', error);
+    throw error;
+  }
+}
+
+export async function getTrainersForDate(
+  clubId: string,
+  date: string
+): Promise<any[]> {
+  const { data, error } = await supabase.rpc('get_trainers_for_date', {
+    p_club_id: clubId,
+    p_date: date,
+  });
+
+  if (error) {
+    console.error('Error fetching trainers for date:', error);
+    throw error;
+  }
+
+  return data || [];
+}
+
+export async function deleteTrainerSchedule(scheduleId: number): Promise<void> {
+  const { error } = await supabase
+    .from('trainer_schedules')
+    .delete()
+    .eq('id', scheduleId);
+
+  if (error) {
+    console.error('Error deleting trainer schedule:', error);
+    throw error;
+  }
 }
