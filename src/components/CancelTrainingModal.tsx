@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { de } from 'date-fns/locale';
+import { deCH } from 'date-fns/locale';
 import { createOverride } from '../lib/supabaseService';
 import type { TrainingSlot } from '../types';
 
@@ -72,7 +72,7 @@ export default function CancelTrainingModal({
 
         <div className="mb-6 p-4 bg-kaisho-darkPanel/50 backdrop-blur-sm rounded-xl border border-kaisho-blueLight/20">
           <div className="text-white/90 text-sm mb-2">
-            <strong>Datum:</strong> {format(date, 'EEEE, d. MMMM yyyy', { locale: de })}
+            <strong>Datum:</strong> {format(date, 'EEEE, d. MMMM yyyy', { locale: deCH })}
           </div>
           <div className="text-white/90 text-sm">
             <strong>Zeit:</strong> {slot.timeStart.slice(0, 5)}

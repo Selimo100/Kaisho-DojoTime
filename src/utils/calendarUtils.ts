@@ -8,7 +8,7 @@ import {
   addMonths,
   subMonths,
 } from 'date-fns';
-import { de } from 'date-fns/locale';
+import { deCH } from 'date-fns/locale';
 import type { TrainingDay, TrainingOverride, TrainingSlot } from '../types';
 
 /**
@@ -126,7 +126,7 @@ export function getSlotsForDate(date: Date, slots: TrainingSlot[], includeCancel
  * Formatiere Monat und Jahr für Anzeige
  */
 export function formatMonthYear(date: Date): string {
-  return format(date, 'MMMM yyyy', { locale: de });
+  return format(date, 'MMMM yyyy', { locale: deCH });
 }
 
 /**

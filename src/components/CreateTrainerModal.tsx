@@ -145,7 +145,7 @@ export default function CreateTrainerModal({
 
   const formatDateDisplay = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('de-DE', { 
+    return date.toLocaleDateString('de-CH', { 
       day: '2-digit', 
       month: '2-digit', 
       year: 'numeric' 

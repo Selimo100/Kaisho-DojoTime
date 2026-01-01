@@ -160,7 +160,7 @@ export default function DeveloperPanel() {
         {/* Toolbar */}
         <div className="border-b border-gray-200 p-2 flex gap-2 bg-gray-50">
           <button
-            onClick={() => setActiveTab('activity')}
+            onClick={() => { setActiveTab('activity'); setData(null); }}
             className={`px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors ${
               activeTab === 'activity' ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-200 text-gray-600'
             }`}
@@ -169,7 +169,7 @@ export default function DeveloperPanel() {
             Recent Activity
           </button>
           <button
-            onClick={() => setActiveTab('stats')}
+            onClick={() => { setActiveTab('stats'); setData(null); }}
             className={`px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors ${
               activeTab === 'stats' ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-200 text-gray-600'
             }`}
@@ -178,7 +178,7 @@ export default function DeveloperPanel() {
             System Stats
           </button>
           <button
-            onClick={() => setActiveTab('users')}
+            onClick={() => { setActiveTab('users'); setData(null); }}
             className={`px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors ${
               activeTab === 'users' ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-200 text-gray-600'
             }`}
@@ -187,7 +187,7 @@ export default function DeveloperPanel() {
             User Analytics
           </button>
           <button
-            onClick={() => setActiveTab('raw')}
+            onClick={() => { setActiveTab('raw'); setData(null); }}
             className={`px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors ${
               activeTab === 'raw' ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-200 text-gray-600'
             }`}
@@ -221,7 +221,7 @@ export default function DeveloperPanel() {
             </div>
           ) : (
             <>
-              {activeTab === 'activity' && data && (
+              {activeTab === 'activity' && Array.isArray(data) && (
                 <div className="space-y-4">
                   <h3 className="text-lg font-bold text-gray-800 mb-4">Last 50 Training Entries</h3>
                   <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
@@ -239,7 +239,7 @@ export default function DeveloperPanel() {
                         {data.map((entry: any) => (
                           <tr key={entry.id} className="hover:bg-gray-50">
                             <td className="p-3 text-gray-500 font-mono text-xs">
-                              {new Date(entry.created_at).toLocaleString()}
+                              {new Date(entry.created_at).toLocaleString('de-CH')}
                             </td>
                             <td className="p-3 font-medium text-blue-600">
                               {entry.clubs?.name || 'Unknown Club'}
@@ -255,7 +255,7 @@ export default function DeveloperPanel() {
                 </div>
               )}
 
-              {activeTab === 'stats' && data && (
+              {activeTab === 'stats' && data?.clubs && (
                 <div className="space-y-8">
                   {/* Key Metrics */}
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -313,7 +313,7 @@ export default function DeveloperPanel() {
                 </div>
               )}
 
-              {activeTab === 'users' && data && (
+              {activeTab === 'users' && data?.active && (
                 <div className="space-y-8">
                   {/* Active Users */}
                   <div>
@@ -338,7 +338,7 @@ export default function DeveloperPanel() {
                               <td className="p-3 text-gray-600 font-mono text-xs">{user.email}</td>
                               <td className="p-3 text-blue-600">{user.clubs?.name || 'Unknown'}</td>
                               <td className="p-3 text-gray-500 text-xs">
-                                {new Date(user.created_at).toLocaleDateString()}
+                                {new Date(user.created_at).toLocaleDateString('de-CH')}
                               </td>
                             </tr>
                           ))}
@@ -375,7 +375,7 @@ export default function DeveloperPanel() {
                               <td className="p-3 text-gray-600 font-mono text-xs">{user.email}</td>
                               <td className="p-3 text-gray-600">{user.club_name || 'Unknown'}</td>
                               <td className="p-3 text-red-600 text-xs font-medium">
-                                {new Date(user.deleted_at).toLocaleString()}
+                                {new Date(user.deleted_at).toLocaleString('de-CH')}
                               </td>
                             </tr>
                           ))}
@@ -391,7 +391,7 @@ export default function DeveloperPanel() {
                 </div>
               )}
 
-              {activeTab === 'raw' && data && (
+              {activeTab === 'raw' && data?.clubs && (
                 <div className="space-y-8">
                   <div>
                     <h3 className="text-lg font-bold text-gray-800 mb-4">Clubs Table</h3>

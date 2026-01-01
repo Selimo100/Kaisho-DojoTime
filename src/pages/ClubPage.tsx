@@ -70,12 +70,6 @@ export default function ClubPage() {
           getOverridesByClub(clubData.id, startDate, endDate),
         ]);
 
-        console.log('ClubPage Initial Load:', {
-          entriesCount: allEntries.length,
-          entries: allEntries,
-          overridesCount: overridesData.length
-        });
-
         setTrainingDays(days);
         setEntries(allEntries);
         setOverrides(overridesData);

@@ -15,7 +15,7 @@ export const formatTime = (time: string | null): string => {
 
 export const formatDate = (dateString: string): string => {
   const date = new Date(dateString);
-  return date.toLocaleDateString('de-DE', {
+  return date.toLocaleDateString('de-CH', {
     weekday: 'short',
     day: '2-digit',
     month: '2-digit',

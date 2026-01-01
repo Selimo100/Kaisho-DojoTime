@@ -453,7 +453,7 @@ export default function AdminPanel({
                       >
                         <div className="flex-1">
                           <div className="font-bold text-kaisho-blue text-sm md:text-base">
-                            {new Date(extra.override_date).toLocaleDateString('de-DE')} - {extra.time_start?.slice(0, 5)}
+                            {new Date(extra.override_date).toLocaleDateString('de-CH')} - {extra.time_start?.slice(0, 5)}
                             {extra.time_end && ` - ${extra.time_end.slice(0, 5)}`}
                           </div>
                           {extra.reason && (
