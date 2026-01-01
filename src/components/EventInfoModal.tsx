@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { deCH } from 'date-fns/locale';
+import { de } from 'date-fns/locale';
 import type { TrainingSlot } from '../types';
 
 interface EventInfoModalProps {
@@ -27,7 +27,7 @@ export default function EventInfoModal({ event, onClose }: EventInfoModalProps) 
               <span>Event Info</span>
             </h2>
             <p className="text-white/90 text-sm mt-1">
-              {format(eventDate, 'EEEE, d. MMMM yyyy', { locale: deCH })}
+              {format(eventDate, 'EEEE, d. MMMM yyyy', { locale: de })}
             </p>
           </div>
           <button
@@ -73,7 +73,7 @@ export default function EventInfoModal({ event, onClose }: EventInfoModalProps) 
                 <div>
                   <div className="text-xs font-semibold text-sky-600">DATUM</div>
                   <div className="text-lg font-bold text-sky-900">
-                    {format(eventDate, 'EEEE, d. MMMM yyyy', { locale: deCH })}
+                    {format(eventDate, 'EEEE, d. MMMM yyyy', { locale: de })}
                   </div>
                 </div>
               </div>

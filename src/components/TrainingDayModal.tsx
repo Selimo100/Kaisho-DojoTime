@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { deCH } from 'date-fns/locale';
+import { de } from 'date-fns/locale';
 import type { TrainingSlot, TrainingEntry } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { createTrainingEntry, deleteTrainingEntry, deleteOverride, cancelScheduledTrainer } from '../lib/supabaseService';
@@ -197,10 +197,10 @@ export default function TrainingDayModal({
         <div className="bg-white border-b border-kaisho-greyLight p-5 md:p-6 flex justify-between items-center flex-shrink-0">
           <div>
             <h2 className="text-xl md:text-2xl font-bold text-kaisho-blue tracking-tight">
-              {format(date, 'EEEE', { locale: deCH })}
+              {format(date, 'EEEE', { locale: de })}
             </h2>
             <p className="text-sm text-gray-500 mt-1">
-              {format(date, 'd. MMMM yyyy', { locale: deCH })}
+              {format(date, 'd. MMMM yyyy', { locale: de })}
             </p>
           </div>
           <button
