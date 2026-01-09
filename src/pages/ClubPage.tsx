@@ -15,6 +15,7 @@ import AuthModal from '../components/AuthModal';
 import LoadingPage from '../components/LoadingPage';
 import QuickEventModal from '../components/QuickEventModal';
 import EventInfoModal from '../components/EventInfoModal';
+import TrainerProfileModal from '../components/TrainerProfileModal';
 import { useAuth } from '../context/AuthContext';
 import { useAdmin } from '../context/AdminContext';
 import { calculateTrainingSlotsForMonth } from '../utils/calendarUtils';
@@ -34,12 +35,13 @@ export default function ClubPage() {
   const [club, setClub] = useState<Club | null>(null);
   const [trainingDays, setTrainingDays] = useState<TrainingDay[]>([]);
   const [entries, setEntries] = useState<TrainingEntry[]>([]);
-  const [, setOverrides] = useState<any[]>([]);
+  const [overrides, setOverrides] = useState<any[]>([]);
   const [slots, setSlots] = useState<TrainingSlot[]>([]);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedSlots, setSelectedSlots] = useState<TrainingSlot[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<TrainingSlot | null>(null);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -202,12 +204,21 @@ export default function ClubPage() {
                     </div>
                   </div>
                 </div>
-                <button
-                  onClick={handleFullLogout}
-                  className="text-sm text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 px-4 py-2 rounded-lg transition-all font-medium"
-                >
-                  Abmelden
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowProfileModal(true)}
+                    className="bg-gradient-to-r from-kaisho-blue to-kaisho-blueLight hover:from-kaisho-blueLight hover:to-kaisho-blue text-white px-5 py-2 rounded-lg transition-all font-medium shadow-md flex items-center gap-2 active:scale-95"
+                  >
+                    <span>👤</span>
+                    <span>Mein Profil</span>
+                  </button>
+                  <button
+                    onClick={handleFullLogout}
+                    className="text-sm text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 px-4 py-2 rounded-lg transition-all font-medium border border-red-100 shadow-sm"
+                  >
+                    Abmelden
+                  </button>
+                </div>
               </div>
             </div>
           ) : (
@@ -399,6 +410,16 @@ export default function ClubPage() {
             await handleRefreshTrainingDays();
             handleRefreshEntries();
           }}
+        />
+      )}
+
+      {/* Trainer Profile Modal */}
+      {showProfileModal && trainer && club && (
+        <TrainerProfileModal
+          entries={entries}
+          trainingDays={trainingDays}
+          overrides={overrides}
+          onClose={() => setShowProfileModal(false)}
         />
       )}
 

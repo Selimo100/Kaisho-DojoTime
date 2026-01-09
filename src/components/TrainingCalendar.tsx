@@ -152,6 +152,11 @@ export default function TrainingCalendar({
                   {slot.isEvent && <span>📅</span>}
                   {slot.isExtra && !slot.isEvent && <span>✨</span>}
                   {hasNoTrainer && <span>⚠️</span>}
+                  {!slot.isCancelled && !slot.isEvent && !hasNoTrainer && (
+                    <span className="ml-1 bg-black/15 px-1 rounded-sm text-[9px] min-w-[12px] text-center inline-block">
+                      {slotEntries.length}
+                    </span>
+                  )}
                   {slot.isCancelled && <span className="no-underline">❌</span>}
                 </div>
               );
