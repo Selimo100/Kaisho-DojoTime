@@ -1,10 +1,12 @@
-import { useRef, useState } from 'react';
-import { format, parseISO, isPast, isToday, startOfMonth } from 'date-fns';
+import { useRef, useState, useEffect } from 'react';
+import { format, parseISO, isPast, isToday, startOfMonth, subYears, addYears } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useAuth } from '../context/AuthContext';
+import { getEntriesWithScheduledTrainers } from '../lib/supabaseService';
 import type { TrainingEntry, TrainingDay } from '../types';
 
 interface TrainerProfileModalProps {
+  clubId: string;
   trainingDays: TrainingDay[];
   overrides: any[];
   entries: TrainingEntry[];
@@ -12,20 +14,48 @@ interface TrainerProfileModalProps {
 }
 
 export default function TrainerProfileModal({
+  clubId,
   trainingDays,
   overrides,
-  entries,
+  entries: initialEntries,
   onClose
 }: TrainerProfileModalProps) {
   const { trainer } = useAuth();
   const printRef = useRef<HTMLDivElement>(null);
   const [showPast, setShowPast] = useState(false);
   const [selectedMonthFilter, setSelectedMonthFilter] = useState<string>('all');
+  
+  const [isLoading, setIsLoading] = useState(false);
+  const [allEntries, setAllEntries] = useState<TrainingEntry[]>(initialEntries);
+
+  useEffect(() => {
+    if (!clubId || !trainer) return;
+
+    const loadFullHistory = async () => {
+      setIsLoading(true);
+      try {
+        // Load extensive history (2 years back, 2 years forward)
+        // to ensure export and list are complete
+        const now = new Date();
+        const startDate = format(subYears(now, 2), 'yyyy-01-01');
+        const endDate = format(addYears(now, 2), 'yyyy-12-31');
+
+        const fullEntries = await getEntriesWithScheduledTrainers(clubId, startDate, endDate);
+        setAllEntries(fullEntries);
+      } catch (error) {
+        console.error('Error loading full trainer history:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadFullHistory();
+  }, [clubId, trainer]);
 
   if (!trainer) return null;
 
   // 1. All entries for this trainer
-  const allMyEntries = entries.filter(e => e.trainer_id === trainer.id);
+  const allMyEntries = allEntries.filter(e => e.trainer_id === trainer.id);
 
   // 2. Helper to find time
   const getEntryTime = (entry: TrainingEntry) => {
@@ -246,7 +276,15 @@ export default function TrainerProfileModal({
         <div className="flex-none p-6 border-b border-gray-100">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-2xl font-bold text-kaisho-blue">Meine Trainings</h2>
+              <h2 className="text-2xl font-bold text-kaisho-blue flex items-center gap-2">
+                Meine Trainings
+                {isLoading && (
+                   <svg className="animate-spin h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                   </svg>
+                )}
+              </h2>
               <p className="text-gray-500 text-sm mt-1">
                 Hallo {trainer.name.split(' ')[0]}! Hier ist dein Trainingsplan.
               </p>

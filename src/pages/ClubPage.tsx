@@ -416,6 +416,7 @@ export default function ClubPage() {
       {/* Trainer Profile Modal */}
       {showProfileModal && trainer && club && (
         <TrainerProfileModal
+          clubId={club.id}
           entries={entries}
           trainingDays={trainingDays}
           overrides={overrides}
