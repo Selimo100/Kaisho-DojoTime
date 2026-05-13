@@ -66,5 +66,5 @@ CREATE TRIGGER trigger_archive_deleted_trainer
   EXECUTE FUNCTION archive_deleted_trainer();
 
 -- Permissions
-GRANT ALL ON public.deleted_trainers TO anon, authenticated;
-GRANT ALL ON SEQUENCE deleted_trainers_id_seq TO anon, authenticated;
+GRANT ALL ON public.deleted_trainers TO anon, authenticated, service_role;
+GRANT ALL ON SEQUENCE deleted_trainers_id_seq TO anon, authenticated, service_role;

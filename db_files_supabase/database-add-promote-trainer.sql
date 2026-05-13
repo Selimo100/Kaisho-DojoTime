@@ -38,4 +38,4 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Permissions
-GRANT EXECUTE ON FUNCTION promote_trainer_to_admin(UUID, BOOLEAN) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION promote_trainer_to_admin(UUID, BOOLEAN) TO anon, authenticated, service_role;

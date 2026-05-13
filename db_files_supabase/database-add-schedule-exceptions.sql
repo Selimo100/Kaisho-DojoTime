@@ -125,4 +125,4 @@ END;
 $$;
 
 -- Permissions
-GRANT EXECUTE ON FUNCTION public.get_entries_with_scheduled_trainers TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.get_entries_with_scheduled_trainers TO anon, authenticated, service_role;

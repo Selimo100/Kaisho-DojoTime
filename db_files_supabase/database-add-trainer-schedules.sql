@@ -140,6 +140,6 @@ END;
 $$;
 
 -- Permissions
-GRANT EXECUTE ON FUNCTION public.create_trainer_from_schedule TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.update_trainer_schedule TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.get_trainers_for_date TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.create_trainer_from_schedule TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.update_trainer_schedule TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.get_trainers_for_date TO anon, authenticated, service_role;

@@ -40,5 +40,5 @@ CREATE POLICY "training_overrides_all_policy"
   USING (true) WITH CHECK (true);
 
 -- Permissions
-GRANT ALL ON public.training_overrides TO anon, authenticated;
-GRANT ALL ON SEQUENCE training_overrides_id_seq TO anon, authenticated;
+GRANT ALL ON public.training_overrides TO anon, authenticated, service_role;
+GRANT ALL ON SEQUENCE training_overrides_id_seq TO anon, authenticated, service_role;

@@ -45,8 +45,8 @@ CREATE POLICY "admins_delete_policy"
   USING (true);
 
 -- Permissions
-GRANT ALL ON public.admins TO anon, authenticated;
-GRANT ALL ON SEQUENCE admins_id_seq TO anon, authenticated;
+GRANT ALL ON public.admins TO anon, authenticated, service_role;
+GRANT ALL ON SEQUENCE admins_id_seq TO anon, authenticated, service_role;
 
 -- Funktion zum Erstellen eines Admins
 CREATE OR REPLACE FUNCTION create_admin(
