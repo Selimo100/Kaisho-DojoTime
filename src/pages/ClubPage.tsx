@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
 import type { Club, TrainingDay, TrainingEntry, TrainingSlot } from '../types';
 import {
@@ -19,6 +19,8 @@ import TrainerProfileModal from '../components/TrainerProfileModal';
 import { useAuth } from '../context/AuthContext';
 import { useAdmin } from '../context/AdminContext';
 import { calculateTrainingSlotsForMonth } from '../utils/calendarUtils';
+import { ArrowLeft, User, LogIn, LogOut, Settings, CalendarPlus, CalendarDays } from 'lucide-react';
+import Button from '../components/ui/Button';
 
 export default function ClubPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -47,6 +49,15 @@ export default function ClubPage() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showQuickEventModal, setShowQuickEventModal] = useState(false);
   const [quickEventDate, setQuickEventDate] = useState<Date | null>(null);
+  const hasPromptedLogin = useRef(false);
+
+  // Login ist Pflicht: Sobald der Club geladen ist und niemand angemeldet ist,
+  // öffnet sich das Anmelde-Fenster automatisch (einmalig pro Besuch).
+  useEffect(() => {
+    if (isLoading || trainer || hasPromptedLogin.current) return;
+    hasPromptedLogin.current = true;
+    setShowAuthModal(true);
+  }, [isLoading, trainer]);
 
   useEffect(() => {
     if (!slug) return;
@@ -150,21 +161,56 @@ export default function ClubPage() {
   return (
     <div className="min-h-screen bg-kaisho-whiteSoft">
       <div className="container mx-auto px-3 py-4 md:px-4 md:py-6 max-w-6xl">
-        {/* Mobile-First Header */}
-        <div className="mb-4 md:mb-6">
-          {/* Back Button */}
+        {/* Top Bar: Zurück links, Benutzer/Login rechts */}
+        <div className="flex items-center justify-between gap-3 mb-4 md:mb-6">
           <button
             onClick={() => navigate('/')}
-            className="text-kaisho-blue hover:text-kaisho-blueLight mb-3 md:mb-4 flex items-center gap-2 text-sm md:text-base 
-                     bg-white px-3 py-2 rounded-lg hover:bg-kaisho-blueIce transition-all border border-kaisho-greyLight shadow-sm"
+            className="text-gray-600 hover:text-kaisho-blue inline-flex items-center gap-2 text-sm
+                     bg-white px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors border border-kaisho-greyLight"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Zurück
+            <ArrowLeft className="w-4 h-4" />
+            <span className="hidden sm:inline">Zurück</span>
           </button>
 
-          {/* Club Info Card */}
+          {trainer ? (
+            <div className="flex items-center gap-2 md:gap-3">
+              {/* Benutzer-Info (ab sm sichtbar) */}
+              <div className="hidden sm:flex items-center gap-2 min-w-0">
+                <div className="w-9 h-9 bg-kaisho-blue rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
+                  {trainer.name.charAt(0).toUpperCase()}
+                </div>
+                <div className="min-w-0 leading-tight">
+                  <p className="font-medium text-gray-900 text-sm truncate max-w-[160px]">{trainer.name}</p>
+                  <p className="text-xs text-gray-500">
+                    {admin ? (admin.is_super_admin ? 'Super-Admin' : 'Admin') : 'Trainer'}
+                  </p>
+                </div>
+              </div>
+              {admin && canAdminManageClub() && (
+                <Button
+                  variant="secondary"
+                  onClick={() => setShowAdminPanel(true)}
+                  icon={<Settings className="w-4 h-4" />}
+                >
+                  <span className="hidden sm:inline">Admin</span>
+                </Button>
+              )}
+              <Button onClick={() => setShowProfileModal(true)} icon={<User className="w-4 h-4" />}>
+                <span className="hidden sm:inline">Profil</span>
+              </Button>
+              <Button variant="secondary" onClick={handleFullLogout} icon={<LogOut className="w-4 h-4" />}>
+                <span className="hidden sm:inline">Abmelden</span>
+              </Button>
+            </div>
+          ) : (
+            <Button onClick={() => setShowAuthModal(true)} icon={<LogIn className="w-4 h-4" />}>
+              Anmelden
+            </Button>
+          )}
+        </div>
+
+        {/* Club Info Card */}
+        <div className="mb-4 md:mb-6">
           <div className="bg-white rounded-2xl p-4 md:p-6 border border-kaisho-greyLight shadow-md">
             <h1 className="text-2xl md:text-4xl font-bold text-kaisho-blue mb-1">
               {club.name}
@@ -182,127 +228,19 @@ export default function ClubPage() {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 text-xs font-medium text-kaisho-blue hover:text-kaisho-blueLight underline underline-offset-2 whitespace-nowrap"
               >
-                <span aria-hidden="true">📅</span>
+                <CalendarDays className="w-3.5 h-3.5" />
                 Öffentlicher Kalender
               </a>
             </div>
           </div>
         </div>
 
-        {/* Auth Status Bar - Unified & Clean */}
-        <div className="mb-4">
-          {trainer ? (
-            <div className="bg-white rounded-xl p-3 md:p-4 border border-kaisho-greyLight shadow-sm">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-kaisho-blue to-kaisho-blueLight rounded-full flex items-center justify-center text-white font-bold text-base md:text-lg">
-                      {trainer.name.charAt(0).toUpperCase()}
-                    </div>
-                    {admin && (
-                      <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center border-2 border-white">
-                        <span className="text-xs">👑</span>
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-800 text-sm md:text-base">{trainer.name}</p>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-500">Trainer</span>
-                      {admin && (
-                        <>
-                          <span className="text-xs text-gray-300">•</span>
-                          <span className="text-xs text-amber-600 font-medium">
-                            {admin.is_super_admin ? 'Super-Admin' : 'Admin'}
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setShowProfileModal(true)}
-                    className="bg-gradient-to-r from-kaisho-blue to-kaisho-blueLight hover:from-kaisho-blueLight hover:to-kaisho-blue text-white px-5 py-2 rounded-lg transition-all font-medium shadow-md flex items-center gap-2 active:scale-95"
-                  >
-                    <span>👤</span>
-                    <span>Mein Profil</span>
-                  </button>
-                  <button
-                    onClick={handleFullLogout}
-                    className="text-sm text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 px-4 py-2 rounded-lg transition-all font-medium border border-red-100 shadow-sm"
-                  >
-                    Abmelden
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={() => setShowAuthModal(true)}
-              className="w-full bg-gradient-to-r from-kaisho-blue to-kaisho-blueLight hover:from-kaisho-blueLight hover:to-kaisho-blue text-white rounded-xl p-4 
-                       flex items-center justify-between transition-all shadow-lg"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                </div>
-                <div className="text-left">
-                  <p className="font-medium text-sm md:text-base">Anmelden / Registrieren</p>
-                  <p className="text-xs text-white/80">Um Trainingseinträge zu sehen und zu erstellen</p>
-                </div>
-              </div>
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          )}
-        </div>
-
-        {/* Admin Panel Toggle - Only shown if user is admin */}
-        {admin && canAdminManageClub() && (
-          <div className="mb-4">
-            <button
-              onClick={() => setShowAdminPanel(!showAdminPanel)}
-              className="w-full bg-white text-kaisho-blue rounded-xl p-3 
-                       hover:bg-kaisho-blueIce transition-all border border-kaisho-greyLight shadow-sm flex items-center justify-between"
-            >
-              <span className="text-sm md:text-base font-medium flex items-center gap-2">
-                {showAdminPanel ? '📁 Admin-Panel schliessen' : '⚙️ Admin-Panel öffnen'}
-              </span>
-              <svg 
-                className={`w-5 h-5 transition-transform ${showAdminPanel ? 'rotate-180' : ''}`} 
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-          </div>
-        )}
-
-        {/* Admin Panel - Collapsible */}
-        {admin && canAdminManageClub() && showAdminPanel && (
-          <div className="mb-4">
-            <AdminPanel
-              club={club}
-              trainingDays={trainingDays}
-              onClose={() => setShowAdminPanel(false)}
-              onTrainingDayAdded={handleRefreshTrainingDays}
-            />
-          </div>
-        )}
-
         {/* Training Calendar - Mobile First */}
         {trainingDays.length === 0 ? (
           <div className="bg-white rounded-2xl p-6 md:p-8 text-center border border-kaisho-greyLight shadow-md">
             <div className="text-gray-500 text-sm md:text-base">
               Noch keine Trainingstage konfiguriert.
-              {admin && canAdminManageClub() && ' Nutzen Sie das Admin-Panel oben.'}
+              {admin && canAdminManageClub() && ' Nutzen Sie den Admin-Button oben rechts.'}
             </div>
           </div>
         ) : (
@@ -336,15 +274,10 @@ export default function ClubPage() {
                     setQuickEventDate(new Date());
                     setShowQuickEventModal(true);
                   }}
-                  className="group relative px-4 py-3 bg-sky-400 hover:bg-sky-500 text-white font-semibold rounded-xl shadow-lg transition-all active:scale-95 flex items-center gap-2"
+                  className="px-4 py-3 bg-kaisho-blue hover:bg-kaisho-blueLight text-white font-medium rounded-xl shadow-lg transition-colors flex items-center gap-2"
                 >
-                  <span className="text-lg">📅</span>
+                  <CalendarPlus className="w-5 h-5" />
                   <span className="hidden sm:inline text-sm">Event</span>
-                  
-                  {/* Tooltip */}
-                  <div className="absolute bottom-full right-0 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                    Event erstellen
-                  </div>
                 </button>
               </div>
             )}
@@ -427,6 +360,23 @@ export default function ClubPage() {
             handleRefreshEntries();
           }}
         />
+      )}
+
+      {/* Admin Panel - Overlay */}
+      {admin && canAdminManageClub() && showAdminPanel && (
+        <div
+          className="fixed inset-0 z-50 bg-black/50 flex items-start md:items-center justify-center p-3 md:p-4 overflow-y-auto"
+          onClick={() => setShowAdminPanel(false)}
+        >
+          <div className="w-full max-w-3xl my-4" onClick={(e) => e.stopPropagation()}>
+            <AdminPanel
+              club={club}
+              trainingDays={trainingDays}
+              onClose={() => setShowAdminPanel(false)}
+              onTrainingDayAdded={handleRefreshTrainingDays}
+            />
+          </div>
+        </div>
       )}
 
       {/* Trainer Profile Modal */}

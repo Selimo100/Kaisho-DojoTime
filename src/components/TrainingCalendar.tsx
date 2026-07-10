@@ -7,6 +7,7 @@ import {
   parseISO
 } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { CalendarDays, Sparkles, AlertTriangle, XCircle, Check, CalendarX2 } from 'lucide-react';
 import type { TrainingSlot, TrainingEntry } from '../types';
 import {
   getCalendarGrid,
@@ -141,15 +142,15 @@ export default function TrainingCalendar({
                   {slot.name && (
                     <span className="truncate max-w-[70px] font-medium opacity-90">{slot.name}</span>
                   )}
-                  {slot.isEvent && <span>📅</span>}
-                  {slot.isExtra && !slot.isEvent && <span>✨</span>}
-                  {hasNoTrainer && <span>⚠️</span>}
+                  {slot.isEvent && <CalendarDays className="w-3 h-3 flex-shrink-0" />}
+                  {slot.isExtra && !slot.isEvent && <Sparkles className="w-3 h-3 flex-shrink-0" />}
+                  {hasNoTrainer && <AlertTriangle className="w-3 h-3 flex-shrink-0" />}
                   {!slot.isCancelled && !slot.isEvent && !hasNoTrainer && (
                     <span className="ml-1 bg-black/15 px-1 rounded-sm text-[9px] min-w-[12px] text-center inline-block">
                       {slotEntries.length}
                     </span>
                   )}
-                  {slot.isCancelled && <span className="no-underline">❌</span>}
+                  {slot.isCancelled && <XCircle className="w-3 h-3 flex-shrink-0" />}
                 </div>
               );
             })}
@@ -163,30 +164,31 @@ export default function TrainingCalendar({
   };
 
   // Beschreibt Farbe, Label und Icon eines Slots für die Agenda-Ansicht
+  const iconClass = 'w-3.5 h-3.5';
   const getSlotMeta = (slot: TrainingSlot) => {
     const slotEntries = getEntriesForSlot(slot);
     if (slot.isCancelled) {
-      return { accent: 'bg-gray-400', pill: 'bg-gray-100 text-gray-500', label: 'Abgesagt', icon: '❌' };
+      return { accent: 'bg-gray-400', pill: 'bg-gray-100 text-gray-500', label: 'Abgesagt', icon: <XCircle className={iconClass} /> };
     }
     if (slot.isEvent) {
-      return { accent: 'bg-sky-400', pill: 'bg-sky-100 text-sky-700', label: 'Event', icon: '📅' };
+      return { accent: 'bg-sky-400', pill: 'bg-sky-100 text-sky-700', label: 'Event', icon: <CalendarDays className={iconClass} /> };
     }
     if (slotEntries.length === 0) {
-      return { accent: 'bg-red-500', pill: 'bg-red-100 text-red-700', label: 'Kein Trainer', icon: '⚠️' };
+      return { accent: 'bg-red-500', pill: 'bg-red-100 text-red-700', label: 'Kein Trainer', icon: <AlertTriangle className={iconClass} /> };
     }
     if (slot.isExtra) {
       return {
         accent: 'bg-purple-500',
         pill: 'bg-purple-100 text-purple-700',
         label: `${slotEntries.length} Trainer`,
-        icon: '✨',
+        icon: <Sparkles className={iconClass} />,
       };
     }
     return {
       accent: 'bg-emerald-500',
       pill: 'bg-emerald-100 text-emerald-700',
       label: `${slotEntries.length} Trainer`,
-      icon: '✓',
+      icon: <Check className={iconClass} />,
     };
   };
 
@@ -225,9 +227,10 @@ export default function TrainingCalendar({
             </h2>
             <button
               onClick={() => onMonthChange(new Date())}
-              className="mt-1 px-4 py-1.5 bg-gradient-to-r from-kaisho-blue to-kaisho-blueLight hover:from-kaisho-blueLight hover:to-kaisho-blue text-white text-xs font-semibold rounded-lg transition-all active:scale-95 shadow-md"
+              className="mt-1 inline-flex items-center gap-1.5 px-4 py-1.5 bg-kaisho-blue hover:bg-kaisho-blueLight text-white text-xs font-medium rounded-lg transition-colors"
             >
-              📅 Heute
+              <CalendarDays className="w-3.5 h-3.5" />
+              Heute
             </button>
           </div>
           <button
@@ -242,7 +245,7 @@ export default function TrainingCalendar({
         {/* Agenda-Liste */}
         {dateKeys.length === 0 ? (
           <div className="py-12 text-center">
-            <div className="text-4xl mb-3">🗓️</div>
+            <CalendarX2 className="w-10 h-10 mx-auto mb-3 text-gray-300" />
             <p className="text-gray-500 font-medium">Keine Trainings in diesem Monat</p>
           </div>
         ) : (
@@ -297,7 +300,7 @@ export default function TrainingCalendar({
                             )}
                           </div>
                           <span className={`flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-full whitespace-nowrap ${meta.pill}`}>
-                            <span>{meta.icon}</span>
+                            {meta.icon}
                             {meta.label}
                           </span>
                         </button>
@@ -318,11 +321,11 @@ export default function TrainingCalendar({
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-2.5 h-2.5 bg-purple-500/80 rounded-sm"></div>
-            <span>Extra ✨</span>
+            <span>Extra</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-2.5 h-2.5 bg-red-500/80 rounded-sm"></div>
-            <span>Kein Trainer ⚠️</span>
+            <span>Kein Trainer</span>
           </div>
         </div>
       </div>
@@ -347,9 +350,10 @@ export default function TrainingCalendar({
           </h2>
           <button
             onClick={() => onMonthChange(new Date())}
-            className="px-5 py-2 bg-gradient-to-r from-kaisho-blue to-kaisho-blueLight hover:from-kaisho-blueLight hover:to-kaisho-blue text-white text-sm font-semibold rounded-lg transition-all active:scale-95 shadow-md"
+            className="inline-flex items-center gap-1.5 px-5 py-2 bg-kaisho-blue hover:bg-kaisho-blueLight text-white text-sm font-medium rounded-lg transition-colors"
           >
-            📅 Heute
+            <CalendarDays className="w-4 h-4" />
+            Heute
           </button>
         </div>
         <button
@@ -394,11 +398,11 @@ export default function TrainingCalendar({
         </div>
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-purple-500/80 rounded"></div>
-          <span>Extra-Training ✨</span>
+          <span>Extra-Training</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-red-500/80 rounded"></div>
-          <span>Kein Trainer ⚠️</span>
+          <span>Kein Trainer</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-gray-500/60 rounded"></div>

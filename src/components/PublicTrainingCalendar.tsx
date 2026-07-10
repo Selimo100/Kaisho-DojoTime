@@ -7,6 +7,7 @@ import {
   parseISO,
 } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { CalendarDays, Sparkles, XCircle, Check, CalendarX2 } from 'lucide-react';
 import type { TrainingSlot, TrainingEntry } from '../types';
 import {
   getCalendarGrid,
@@ -139,15 +140,15 @@ export default function PublicTrainingCalendar({
                   {slot.name && (
                     <span className="truncate max-w-[70px] font-medium opacity-90">{slot.name}</span>
                   )}
-                  {slot.isEvent && <span>📅</span>}
-                  {slot.isExtra && !slot.isEvent && <span>✨</span>}
+                  {slot.isEvent && <CalendarDays className="w-3 h-3 flex-shrink-0" />}
+                  {slot.isExtra && !slot.isEvent && <Sparkles className="w-3 h-3 flex-shrink-0" />}
                   {!slot.isCancelled && !slot.isEvent && initials.length > 0 && (
                     <span className="ml-auto bg-black/15 px-1 rounded-sm text-[9px] font-bold">
                       {initials.slice(0, 2).join(' ')}
                       {initials.length > 2 ? ` +${initials.length - 2}` : ''}
                     </span>
                   )}
-                  {slot.isCancelled && <span className="no-underline">❌</span>}
+                  {slot.isCancelled && <XCircle className="w-3 h-3 flex-shrink-0" />}
                 </div>
               );
             })}
@@ -163,19 +164,20 @@ export default function PublicTrainingCalendar({
   };
 
   // Farbe/Label/Icon eines Slots für die Agenda-Ansicht (mobile)
+  const iconClass = 'w-3.5 h-3.5';
   const getSlotMeta = (slot: TrainingSlot) => {
     if (slot.isCancelled) {
-      return { accent: 'bg-gray-400', pill: 'bg-gray-100 text-gray-500', label: 'Abgesagt', icon: '❌' };
+      return { accent: 'bg-gray-400', pill: 'bg-gray-100 text-gray-500', label: 'Abgesagt', icon: <XCircle className={iconClass} /> };
     }
     if (slot.isEvent) {
-      return { accent: 'bg-sky-400', pill: 'bg-sky-100 text-sky-700', label: 'Event', icon: '📅' };
+      return { accent: 'bg-sky-400', pill: 'bg-sky-100 text-sky-700', label: 'Event', icon: <CalendarDays className={iconClass} /> };
     }
     const initials = getInitialsForSlot(slot);
     const label = initials.length > 0 ? initials.join(' · ') : 'Training';
     if (slot.isExtra) {
-      return { accent: 'bg-purple-500', pill: 'bg-purple-100 text-purple-700', label, icon: '✨' };
+      return { accent: 'bg-purple-500', pill: 'bg-purple-100 text-purple-700', label, icon: <Sparkles className={iconClass} /> };
     }
-    return { accent: 'bg-emerald-500', pill: 'bg-emerald-100 text-emerald-700', label, icon: '✓' };
+    return { accent: 'bg-emerald-500', pill: 'bg-emerald-100 text-emerald-700', label, icon: <Check className={iconClass} /> };
   };
 
   // Mobile: Agenda-Ansicht
@@ -211,9 +213,10 @@ export default function PublicTrainingCalendar({
             </h2>
             <button
               onClick={() => onMonthChange(new Date())}
-              className="mt-1 px-4 py-1.5 bg-gradient-to-r from-kaisho-blue to-kaisho-blueLight hover:from-kaisho-blueLight hover:to-kaisho-blue text-white text-xs font-semibold rounded-lg transition-all active:scale-95 shadow-md"
+              className="mt-1 inline-flex items-center gap-1.5 px-4 py-1.5 bg-kaisho-blue hover:bg-kaisho-blueLight text-white text-xs font-medium rounded-lg transition-colors"
             >
-              📅 Heute
+              <CalendarDays className="w-3.5 h-3.5" />
+              Heute
             </button>
           </div>
           <button
@@ -227,7 +230,7 @@ export default function PublicTrainingCalendar({
 
         {dateKeys.length === 0 ? (
           <div className="py-12 text-center">
-            <div className="text-4xl mb-3">🗓️</div>
+            <CalendarX2 className="w-10 h-10 mx-auto mb-3 text-gray-300" />
             <p className="text-gray-500 font-medium">Keine Trainings in diesem Monat</p>
           </div>
         ) : (
@@ -286,7 +289,7 @@ export default function PublicTrainingCalendar({
                           <span
                             className={`flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-full whitespace-nowrap ${meta.pill}`}
                           >
-                            <span>{meta.icon}</span>
+                            {meta.icon}
                             {meta.label}
                           </span>
                         </button>
@@ -307,11 +310,11 @@ export default function PublicTrainingCalendar({
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-2.5 h-2.5 bg-purple-500/80 rounded-sm"></div>
-            <span>Extra ✨</span>
+            <span>Extra</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-2.5 h-2.5 bg-sky-400/80 rounded-sm"></div>
-            <span>Event 📅</span>
+            <span>Event</span>
           </div>
         </div>
       </div>
@@ -335,9 +338,10 @@ export default function PublicTrainingCalendar({
           </h2>
           <button
             onClick={() => onMonthChange(new Date())}
-            className="px-5 py-2 bg-gradient-to-r from-kaisho-blue to-kaisho-blueLight hover:from-kaisho-blueLight hover:to-kaisho-blue text-white text-sm font-semibold rounded-lg transition-all active:scale-95 shadow-md"
+            className="inline-flex items-center gap-1.5 px-5 py-2 bg-kaisho-blue hover:bg-kaisho-blueLight text-white text-sm font-medium rounded-lg transition-colors"
           >
-            📅 Heute
+            <CalendarDays className="w-4 h-4" />
+            Heute
           </button>
         </div>
         <button
@@ -373,11 +377,11 @@ export default function PublicTrainingCalendar({
         </div>
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-purple-500/80 rounded"></div>
-          <span>Extra-Training ✨</span>
+          <span>Extra-Training</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-sky-400/80 rounded"></div>
-          <span>Event 📅</span>
+          <span>Event</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-gray-500/60 rounded"></div>

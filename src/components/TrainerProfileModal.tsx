@@ -1,9 +1,13 @@
 import { useRef, useState, useEffect } from 'react';
 import { format, parseISO, isPast, isToday, startOfMonth, subYears, addYears } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { Loader2, Printer, ChevronDown, CalendarDays } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { getEntriesWithScheduledTrainers } from '../lib/supabaseService';
 import type { TrainingEntry, TrainingDay } from '../types';
+import Modal from './ui/Modal';
+import Button from './ui/Button';
+import Badge from './ui/Badge';
 
 interface TrainerProfileModalProps {
   clubId: string;
@@ -218,212 +222,150 @@ export default function TrainerProfileModal({
 
   const renderEntryCard = (entry: TrainingEntry, isNext: boolean = false) => {
     return (
-      <div 
-        key={entry.id} 
-        className={`p-4 rounded-xl border transition-all hover:bg-gray-50/50 ${
-          isNext ? 'ring-2 ring-kaisho-blue ring-offset-2 border-kaisho-blue shadow-md' :
-          entry.override_id 
-            ? 'bg-purple-50/50 border-purple-100' 
-            : 'bg-white border-gray-100'
+      <div
+        key={entry.id}
+        className={`p-4 rounded-lg border transition-colors ${
+          isNext ? 'border-kaisho-blue bg-kaisho-blueIce' : 'border-kaisho-greyLight bg-white'
         }`}
       >
-        <div className="flex items-start justify-between">
-          <div className="flex gap-4">
-            <div className={`w-12 h-12 rounded-lg flex flex-col items-center justify-center text-white font-bold shrink-0 shadow-sm ${
+        <div className="flex gap-4">
+          <div
+            className={`w-12 h-12 rounded-lg flex flex-col items-center justify-center text-white font-semibold shrink-0 ${
               entry.override_id ? 'bg-purple-500' : 'bg-kaisho-blue'
-            }`}>
-              <span className="text-xs opacity-80">
-                {format(parseISO(entry.training_date), 'MMM', { locale: de }).toUpperCase()}
-              </span>
-              <span>
-                {format(parseISO(entry.training_date), 'dd')}
-              </span>
+            }`}
+          >
+            <span className="text-[10px] opacity-80">
+              {format(parseISO(entry.training_date), 'MMM', { locale: de }).toUpperCase()}
+            </span>
+            <span>{format(parseISO(entry.training_date), 'dd')}</span>
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              {isNext && <Badge tone="blue">Nächstes</Badge>}
+              <h4 className="font-medium text-gray-900">
+                {format(parseISO(entry.training_date), 'EEEE', { locale: de })}
+              </h4>
+              <span className="text-sm text-gray-500">· {getEntryTime(entry)} Uhr</span>
+              {entry.override_id && <Badge tone="purple">Extra</Badge>}
             </div>
-            <div>
-              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                {isNext && <span className="bg-kaisho-blue text-white text-[10px] px-2 py-0.5 rounded-full font-bold animate-pulse">NÄCHSTES</span>}
-                <h4 className="font-bold text-gray-900">
-                  {format(parseISO(entry.training_date), 'EEEE', { locale: de })}
-                </h4>
-                <span className="text-sm text-gray-500">
-                  • {getEntryTime(entry)} Uhr
-                </span>
-                {entry.override_id && (
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700">
-                    EXTRA
-                  </span>
-                )}
-              </div>
-              <p className="text-sm text-gray-600">
-                {entry.remark ? (
-                    <span className="italic">"{entry.remark}"</span>
-                ) : (
-                    <span className="text-gray-400">Keine Bemerkung</span>
-                )}
-              </p>
-            </div>
+            <p className="text-sm text-gray-600">
+              {entry.remark ? (
+                <span className="italic">"{entry.remark}"</span>
+              ) : (
+                <span className="text-gray-400">Keine Bemerkung</span>
+              )}
+            </p>
           </div>
         </div>
       </div>
     );
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl animate-in zoom-in-95 duration-200 border border-white/20">
-        
-        {/* Header */}
-        <div className="flex-none p-6 border-b border-gray-100">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-2xl font-bold text-kaisho-blue flex items-center gap-2">
-                Meine Trainings
-                {isLoading && (
-                   <svg className="animate-spin h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                   </svg>
-                )}
-              </h2>
-              <p className="text-gray-500 text-sm mt-1">
-                Hallo {trainer.name.split(' ')[0]}! Hier ist dein Trainingsplan.
-              </p>
-            </div>
-            <button 
-              onClick={onClose}
-              className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-50 text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
+  const canPrint = filteredUpcoming.length > 0 || (showPast && pastEntries.length > 0);
 
-          {/* Filters */}
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="relative">
-              <select
-                value={selectedMonthFilter}
-                onChange={(e) => setSelectedMonthFilter(e.target.value)}
-                className="appearance-none pl-4 pr-10 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 focus:ring-2 focus:ring-kaisho-blue/20 outline-none cursor-pointer hover:bg-gray-100 transition-colors"
-                disabled={upcomingEntries.length === 0}
-              >
-                <option value="all">Alle kommenden Monate</option>
-                {availableMonths.map(month => (
-                  <option key={month} value={month}>
-                    {format(parseISO(month + '-01'), 'MMMM yyyy', { locale: de })}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-gray-500">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-            </div>
-            
-            {/* Filter Info Badge */}
-            {selectedMonthFilter !== 'all' && (
-              <span className="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded-md font-medium">
-                 {filteredUpcoming.length} Trainings
-              </span>
-            )}
-          </div>
+  return (
+    <Modal
+      title="Meine Trainings"
+      subtitle={`Hallo ${trainer.name.split(' ')[0]}! Hier ist dein Trainingsplan.`}
+      icon={<CalendarDays className="w-5 h-5" />}
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>
+            Schliessen
+          </Button>
+          {canPrint && (
+            <Button onClick={handlePrint} icon={<Printer className="w-4 h-4" />}>
+              PDF / Drucken
+            </Button>
+          )}
+        </>
+      }
+    >
+      <div ref={printRef}>
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-3 mb-5">
+          <select
+            value={selectedMonthFilter}
+            onChange={(e) => setSelectedMonthFilter(e.target.value)}
+            className="px-3 py-2 bg-white border border-kaisho-greyLight rounded-lg text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-kaisho-blueLight/40 cursor-pointer disabled:opacity-50"
+            disabled={upcomingEntries.length === 0}
+          >
+            <option value="all">Alle kommenden Monate</option>
+            {availableMonths.map((month) => (
+              <option key={month} value={month}>
+                {format(parseISO(month + '-01'), 'MMMM yyyy', { locale: de })}
+              </option>
+            ))}
+          </select>
+          {selectedMonthFilter !== 'all' && (
+            <Badge tone="blue">{filteredUpcoming.length} Trainings</Badge>
+          )}
+          {isLoading && <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />}
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 bg-gray-50/30" ref={printRef}>
-          {upcomingEntries.length === 0 && pastEntries.length === 0 ? (
-            <div className="text-center py-12">
-               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
-                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-medium text-gray-900">Keine Trainings</h3>
-              <p className="text-gray-500 mt-2">Du bist aktuell für keine Trainings eingetragen.</p>
+        {upcomingEntries.length === 0 && pastEntries.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
+              <CalendarDays className="w-7 h-7" />
             </div>
-          ) : (
-            <div className="space-y-8">
-              
-              {/* Upcoming Trainings */}
-              {filteredUpcoming.length > 0 ? (
-                Object.keys(groupedUpcoming).sort().map((monthKey) => (
+            <h3 className="text-base font-medium text-gray-900">Keine Trainings</h3>
+            <p className="text-gray-500 mt-1 text-sm">Du bist aktuell für keine Trainings eingetragen.</p>
+          </div>
+        ) : (
+          <div className="space-y-8">
+            {/* Upcoming Trainings */}
+            {filteredUpcoming.length > 0 ? (
+              Object.keys(groupedUpcoming)
+                .sort()
+                .map((monthKey) => (
                   <div key={monthKey} className="space-y-3">
-                     <div className="flex items-center gap-3">
-                       <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider">
-                          {format(parseISO(monthKey + '-01'), 'MMMM yyyy', { locale: de })}
-                       </h3>
-                       <div className="h-px bg-gray-200 flex-1"></div>
-                     </div>
-                     <div className="space-y-3">
-                        {groupedUpcoming[monthKey].map((entry) => {
-                          // Check if this is the very first upcoming entry overall (Next Training)
-                          const isOverallNext = upcomingEntries.length > 0 && entry.id === upcomingEntries[0].id;
-                          return renderEntryCard(entry, isOverallNext);
-                        })}
-                     </div>
+                    <div className="flex items-center gap-3">
+                      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        {format(parseISO(monthKey + '-01'), 'MMMM yyyy', { locale: de })}
+                      </h3>
+                      <div className="h-px bg-kaisho-greyLight flex-1" />
+                    </div>
+                    <div className="space-y-2">
+                      {groupedUpcoming[monthKey].map((entry) => {
+                        const isOverallNext =
+                          upcomingEntries.length > 0 && entry.id === upcomingEntries[0].id;
+                        return renderEntryCard(entry, isOverallNext);
+                      })}
+                    </div>
                   </div>
                 ))
-              ) : (
-                upcomingEntries.length > 0 && (
-                   <div className="text-center py-8 text-gray-500 italic">
-                      Keine Trainings im gewählten Monat.
-                   </div>
-                )
-              )}
-
-              {/* Past Trainings Section (Collapsible) */}
-              {pastEntries.length > 0 && (
-                <div className="pt-6 border-t border-gray-200">
-                  <button 
-                    onClick={() => setShowPast(!showPast)}
-                    className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors w-full group"
-                  >
-                    <div className={`p-1 rounded-md bg-gray-100 group-hover:bg-gray-200 transition-colors`}>
-                        <svg 
-                          className={`w-4 h-4 transition-transform duration-200 ${showPast ? 'rotate-180' : ''}`} 
-                          fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                    </div>
-                    <span>Vergangene Trainings ({pastEntries.length})</span>
-                  </button>
-                  
-                  {showPast && (
-                    <div className="mt-4 space-y-3 opacity-60 hover:opacity-100 transition-opacity duration-300">
-                         {pastEntries.map(entry => renderEntryCard(entry))}
-                    </div>
-                  )}
+            ) : (
+              upcomingEntries.length > 0 && (
+                <div className="text-center py-8 text-gray-500 text-sm">
+                  Keine Trainings im gewählten Monat.
                 </div>
-              )}
-            </div>
-          )}
-        </div>
+              )
+            )}
 
-        {/* Footer */}
-        <div className="flex-none p-6 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-5 py-2.5 text-gray-700 font-medium hover:bg-gray-200 rounded-xl transition-colors"
-          >
-            Schliessen
-          </button>
-          
-          {(filteredUpcoming.length > 0 || (showPast && pastEntries.length > 0)) && (
-            <button
-              onClick={handlePrint}
-              className="px-5 py-2.5 bg-kaisho-blue text-white font-medium hover:bg-kaisho-blueLight rounded-xl transition-all shadow-md active:scale-95 flex items-center gap-2"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-              </svg>
-              PDF / Drucken
-            </button>
-          )}
-        </div>
+            {/* Past Trainings Section (Collapsible) */}
+            {pastEntries.length > 0 && (
+              <div className="pt-6 border-t border-kaisho-greyLight">
+                <button
+                  onClick={() => setShowPast(!showPast)}
+                  className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors"
+                >
+                  <ChevronDown
+                    className={`w-4 h-4 transition-transform ${showPast ? 'rotate-180' : ''}`}
+                  />
+                  <span>Vergangene Trainings ({pastEntries.length})</span>
+                </button>
+
+                {showPast && (
+                  <div className="mt-4 space-y-2">
+                    {pastEntries.map((entry) => renderEntryCard(entry))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
-    </div>
+    </Modal>
   );
 }

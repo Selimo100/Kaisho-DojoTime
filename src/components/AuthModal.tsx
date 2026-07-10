@@ -1,7 +1,16 @@
 import { useState } from 'react';
+import { LogIn } from 'lucide-react';
 import { loginTrainer, registerTrainer, checkTrainerIsAdmin } from '../lib/supabaseService';
 import { useAuth } from '../context/AuthContext';
 import { useAdmin } from '../context/AdminContext';
+import Modal from './ui/Modal';
+import Button from './ui/Button';
+
+const inputClass =
+  'w-full px-3 py-2 bg-white border border-kaisho-greyLight rounded-lg text-gray-800 ' +
+  'placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-kaisho-blueLight/40 focus:border-kaisho-blueLight transition-colors';
+
+const labelClass = 'block text-sm font-medium text-gray-700 mb-1.5';
 
 interface AuthModalProps {
   clubId: string;
@@ -72,103 +81,86 @@ export default function AuthModal({ clubId, clubName, onClose }: AuthModalProps)
   };
 
   return (
-    <div className="fixed inset-0 bg-kaisho-dark/80 backdrop-blur-sm flex items-center justify-center z-50 p-3 md:p-4">
-      <div className="bg-gradient-to-br from-kaisho-darkPanel via-kaisho-blueDark to-kaisho-darkPanel rounded-2xl shadow-2xl max-w-md w-full p-6 md:p-8 border border-kaisho-blueLight/20">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl md:text-2xl font-bold text-white">
-            {isLogin ? '🔐 Anmelden' : '✨ Registrieren'}
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-white/80 hover:text-white text-3xl font-bold w-10 h-10 flex items-center justify-center rounded-lg hover:bg-white/10 transition-all active:scale-95"
+    <Modal
+      title={isLogin ? 'Anmelden' : 'Registrieren'}
+      subtitle={`Verein: ${clubName}`}
+      icon={<LogIn className="w-5 h-5" />}
+      maxWidth="max-w-md"
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>
+            Abbrechen
+          </Button>
+          <Button
+            type="submit"
+            form="auth-form"
+            disabled={isLoading}
+            icon={<LogIn className="w-4 h-4" />}
           >
-            ×
-          </button>
+            {isLoading ? 'Lädt…' : isLogin ? 'Anmelden' : 'Registrieren'}
+          </Button>
+        </>
+      }
+    >
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+          {error}
         </div>
+      )}
 
-        <p className="text-sm text-white/80 mb-6">
-          Verein: <span className="font-bold text-white">{clubName}</span>
-        </p>
-
-        {error && (
-          <div className="mb-4 p-3 md:p-4 bg-kaisho-red/20 backdrop-blur-sm border border-kaisho-red/50 rounded-xl">
-            <p className="text-sm text-kaisho-redLight font-medium">{error}</p>
+      <form id="auth-form" onSubmit={handleSubmit} className="space-y-4">
+        {!isLogin && (
+          <div>
+            <label className={labelClass}>Benutzername</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required={!isLogin}
+              placeholder="Ihr Name"
+              className={inputClass}
+            />
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {!isLogin && (
-            <div>
-              <label className="block text-sm font-semibold text-white mb-2">
-                Benutzername *
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required={!isLogin}
-                placeholder="Ihr Name"
-                className="w-full px-4 py-3 bg-kaisho-darkPanel/50 backdrop-blur-sm border border-kaisho-blueLight/30 rounded-xl text-white placeholder-kaisho-greyLight/50 focus:ring-2 focus:ring-kaisho-red focus:border-kaisho-red transition-all"
-              />
-            </div>
-          )}
-
-          <div>
-            <label className="block text-sm font-semibold text-white mb-2">
-              E-Mail *
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              placeholder="trainer@example.com"
-              className="w-full px-4 py-3 bg-kaisho-darkPanel/50 backdrop-blur-sm border border-kaisho-blueLight/30 rounded-xl text-white placeholder-kaisho-greyLight/50 focus:ring-2 focus:ring-kaisho-red focus:border-kaisho-red transition-all"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-white mb-2">
-              Passwort *
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
-              placeholder="Mindestens 6 Zeichen"
-              className="w-full px-4 py-3 bg-kaisho-darkPanel/50 backdrop-blur-sm border border-kaisho-blueLight/30 rounded-xl text-white placeholder-kaisho-greyLight/50 focus:ring-2 focus:ring-kaisho-red focus:border-kaisho-red transition-all"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full py-3 md:py-4 px-4 bg-gradient-to-r from-kaisho-red to-kaisho-redLight hover:from-kaisho-redLight hover:to-kaisho-red text-white rounded-xl transition-all font-bold text-base md:text-lg shadow-lg shadow-kaisho-red/20 active:scale-95 disabled:opacity-50"
-          >
-            {isLoading
-              ? 'Lädt...'
-              : isLogin
-              ? '✓ Anmelden'
-              : '✨ Registrieren'}
-          </button>
-        </form>
-
-        <div className="mt-6 text-center">
-          <button
-            onClick={() => {
-              setIsLogin(!isLogin);
-              setError('');
-            }}
-            className="text-sm text-white/90 hover:text-white font-semibold underline transition-colors"
-          >
-            {isLogin
-              ? 'Noch kein Konto? Registrieren'
-              : 'Bereits registriert? Anmelden'}
-          </button>
+        <div>
+          <label className={labelClass}>E-Mail</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            placeholder="trainer@example.com"
+            className={inputClass}
+          />
         </div>
+
+        <div>
+          <label className={labelClass}>Passwort</label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={6}
+            placeholder="Mindestens 6 Zeichen"
+            className={inputClass}
+          />
+        </div>
+      </form>
+
+      <div className="mt-5 text-center">
+        <button
+          onClick={() => {
+            setIsLogin(!isLogin);
+            setError('');
+          }}
+          className="text-sm text-kaisho-blue hover:text-kaisho-blueLight font-medium underline underline-offset-2 transition-colors"
+        >
+          {isLogin ? 'Noch kein Konto? Registrieren' : 'Bereits registriert? Anmelden'}
+        </button>
       </div>
-    </div>
+    </Modal>
   );
 }
