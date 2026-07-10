@@ -71,6 +71,7 @@ export async function createTrainingDay(
       weekday: input.weekday,
       time_start: input.time_start,
       time_end: input.time_end || null,
+      name: input.name?.trim() || null,
       is_active: true,
     })
     .select()
@@ -114,6 +115,7 @@ export async function updateTrainingDay(
     weekday?: number;
     time_start?: string;
     time_end?: string;
+    name?: string | null;
   }
 ): Promise<TrainingDay> {
   const { data, error } = await supabase
@@ -122,6 +124,7 @@ export async function updateTrainingDay(
       weekday: updates.weekday,
       time_start: updates.time_start,
       time_end: updates.time_end || null,
+      name: updates.name?.trim() || null,
     })
     .eq('id', id)
     .select()

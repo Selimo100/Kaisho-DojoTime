@@ -255,6 +255,13 @@ export default function TrainingDayModal({
                     <div className="p-4 pl-5">
                       <div className="flex justify-between items-start gap-3">
                         <div className="flex-1">
+                          {slot.name && (
+                            <div className={`text-base font-bold mb-1 ${
+                              slot.isCancelled ? 'text-gray-400 line-through' : 'text-gray-800'
+                            }`}>
+                              {slot.name}
+                            </div>
+                          )}
                           <div className="flex items-center gap-3 flex-wrap">
                             <span className={`text-xl font-bold tracking-tight ${
                               slot.isCancelled ? 'text-gray-400 line-through' : 'text-kaisho-blue'

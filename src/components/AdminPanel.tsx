@@ -53,6 +53,7 @@ export default function AdminPanel({
   const [weekday, setWeekday] = useState(1);
   const [timeStart, setTimeStart] = useState('');
   const [timeEnd, setTimeEnd] = useState('');
+  const [trainingName, setTrainingName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   
   // Data State
@@ -162,10 +163,12 @@ export default function AdminPanel({
         weekday,
         time_start: timeStart,
         time_end: timeEnd || undefined,
+        name: trainingName.trim() || undefined,
       });
       setWeekday(1);
       setTimeStart('');
       setTimeEnd('');
+      setTrainingName('');
       onTrainingDayAdded();
     } catch (error) {
       console.error('Error adding training day:', error);
@@ -192,7 +195,7 @@ export default function AdminPanel({
     }
   };
 
-  const handleUpdateTrainingDay = async (id: number, updates: { weekday: number; time_start: string; time_end?: string }) => {
+  const handleUpdateTrainingDay = async (id: number, updates: { weekday: number; time_start: string; time_end?: string; name?: string | null }) => {
     try {
       await updateTrainingDay(id, updates);
       onTrainingDayAdded();
@@ -310,6 +313,20 @@ export default function AdminPanel({
               <form onSubmit={handleAddTrainingDay} className="space-y-3">
                 <div>
                   <label className="block text-xs md:text-sm font-semibold text-gray-700 mb-2">
+                    Name <span className="text-gray-400 font-normal">(optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={trainingName}
+                    onChange={(e) => setTrainingName(e.target.value)}
+                    placeholder="z.B. Kids-Training, Wettkampfgruppe"
+                    maxLength={60}
+                    className="w-full px-3 md:px-4 py-2 md:py-3 bg-white border border-gray-300 rounded-xl text-gray-800 font-medium placeholder-gray-400 focus:ring-2 focus:ring-kaisho-blueLight focus:border-kaisho-blueLight transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs md:text-sm font-semibold text-gray-700 mb-2">
                     Wochentag *
                   </label>
                   <select
@@ -392,7 +409,12 @@ export default function AdminPanel({
                       className="flex flex-col md:flex-row md:justify-between md:items-center gap-2 md:gap-3 p-3 bg-gray-50 rounded-xl border border-gray-200"
                     >
                       <div className="flex-1">
-                        <div className="font-bold text-gray-800 text-sm md:text-base">
+                        <div className="font-bold text-gray-800 text-sm md:text-base flex items-center gap-2 flex-wrap">
+                          {day.name && (
+                            <span className="px-2 py-0.5 bg-kaisho-blueIce text-kaisho-blue rounded-md text-xs font-semibold">
+                              {day.name}
+                            </span>
+                          )}
                           {getWeekdayName(day.weekday)}
                         </div>
                         <div className="text-xs md:text-sm text-gray-600 font-medium">

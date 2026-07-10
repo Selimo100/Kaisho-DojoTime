@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { 
-  format, 
-  isSameMonth, 
-  isToday, 
-  startOfWeek, 
-  addDays
+import {
+  format,
+  isSameMonth,
+  isToday,
+  isPast,
+  parseISO
 } from 'date-fns';
+import { de } from 'date-fns/locale';
 import type { TrainingSlot, TrainingEntry } from '../types';
 import {
   getCalendarGrid,
@@ -33,10 +34,6 @@ export default function TrainingCalendar({
   const [isMobile, setIsMobile] = useState(false);
   const calendarDays = getCalendarGrid(currentDate);
   const weekDays = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
-  
-  // Get current week for mobile view
-  const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
-  const weekDays7 = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
   useEffect(() => {
     const checkMobile = () => {
@@ -65,14 +62,6 @@ export default function TrainingCalendar({
 
   const handleNextMonth = () => {
     onMonthChange(getNextMonth(currentDate));
-  };
-  
-  const handlePrevWeek = () => {
-    onMonthChange(addDays(currentDate, -7));
-  };
-  
-  const handleNextWeek = () => {
-    onMonthChange(addDays(currentDate, 7));
   };
 
   const handleDayClick = (date: Date) => {
@@ -149,6 +138,9 @@ export default function TrainingCalendar({
                   }`}
                 >
                   <span>{slot.timeStart.slice(0, 5)}</span>
+                  {slot.name && (
+                    <span className="truncate max-w-[70px] font-medium opacity-90">{slot.name}</span>
+                  )}
                   {slot.isEvent && <span>📅</span>}
                   {slot.isExtra && !slot.isEvent && <span>✨</span>}
                   {hasNoTrainer && <span>⚠️</span>}
@@ -170,16 +162,60 @@ export default function TrainingCalendar({
     );
   };
 
-  // Mobile: Wochenansicht, Desktop: Monatsansicht
+  // Beschreibt Farbe, Label und Icon eines Slots für die Agenda-Ansicht
+  const getSlotMeta = (slot: TrainingSlot) => {
+    const slotEntries = getEntriesForSlot(slot);
+    if (slot.isCancelled) {
+      return { accent: 'bg-gray-400', pill: 'bg-gray-100 text-gray-500', label: 'Abgesagt', icon: '❌' };
+    }
+    if (slot.isEvent) {
+      return { accent: 'bg-sky-400', pill: 'bg-sky-100 text-sky-700', label: 'Event', icon: '📅' };
+    }
+    if (slotEntries.length === 0) {
+      return { accent: 'bg-red-500', pill: 'bg-red-100 text-red-700', label: 'Kein Trainer', icon: '⚠️' };
+    }
+    if (slot.isExtra) {
+      return {
+        accent: 'bg-purple-500',
+        pill: 'bg-purple-100 text-purple-700',
+        label: `${slotEntries.length} Trainer`,
+        icon: '✨',
+      };
+    }
+    return {
+      accent: 'bg-emerald-500',
+      pill: 'bg-emerald-100 text-emerald-700',
+      label: `${slotEntries.length} Trainer`,
+      icon: '✓',
+    };
+  };
+
+  // Mobile: Agenda-Ansicht (ganzer Monat, chronologisch, keine übersprungenen Trainings)
   if (isMobile) {
+    // Alle Trainings des aktuellen Monats nach Datum gruppieren
+    const monthSlots = slots
+      .filter((s) => isSameMonth(parseISO(s.date), currentDate))
+      .sort((a, b) => {
+        const d = a.date.localeCompare(b.date);
+        return d !== 0 ? d : a.timeStart.localeCompare(b.timeStart);
+      });
+
+    const byDate = new Map<string, TrainingSlot[]>();
+    monthSlots.forEach((s) => {
+      const list = byDate.get(s.date) || [];
+      list.push(s);
+      byDate.set(s.date, list);
+    });
+    const dateKeys = Array.from(byDate.keys());
+
     return (
       <div className="bg-white rounded-2xl border border-kaisho-greyLight p-4 shadow-sm">
-        {/* Header mit Woche und Navigation */}
+        {/* Header mit Monatsnavigation */}
         <div className="flex items-center justify-between mb-4">
           <button
-            onClick={handlePrevWeek}
+            onClick={handlePrevMonth}
             className="w-10 h-10 flex items-center justify-center hover:bg-kaisho-blueIce rounded-xl transition-all active:scale-95 text-kaisho-blue"
-            aria-label="Vorherige Woche"
+            aria-label="Vorheriger Monat"
           >
             <span className="text-xl">‹</span>
           </button>
@@ -187,47 +223,92 @@ export default function TrainingCalendar({
             <h2 className="text-lg font-bold text-kaisho-blue tracking-tight">
               {formatMonthYear(currentDate)}
             </h2>
-            <p className="text-xs text-gray-500 mb-2">Wochenansicht</p>
             <button
               onClick={() => onMonthChange(new Date())}
-              className="px-4 py-1.5 bg-gradient-to-r from-kaisho-blue to-kaisho-blueLight hover:from-kaisho-blueLight hover:to-kaisho-blue text-white text-xs font-semibold rounded-lg transition-all active:scale-95 shadow-md"
+              className="mt-1 px-4 py-1.5 bg-gradient-to-r from-kaisho-blue to-kaisho-blueLight hover:from-kaisho-blueLight hover:to-kaisho-blue text-white text-xs font-semibold rounded-lg transition-all active:scale-95 shadow-md"
             >
               📅 Heute
             </button>
           </div>
           <button
-            onClick={handleNextWeek}
+            onClick={handleNextMonth}
             className="w-10 h-10 flex items-center justify-center hover:bg-kaisho-blueIce rounded-xl transition-all active:scale-95 text-kaisho-blue"
-            aria-label="Nächste Woche"
+            aria-label="Nächster Monat"
           >
             <span className="text-xl">›</span>
           </button>
         </div>
 
-        {/* Wochentage */}
-        <div className="grid grid-cols-7 gap-1 mb-2">
-          {weekDays.map((day) => (
-            <div
-              key={day}
-              className="text-center text-xs font-bold text-gray-500 py-1"
-            >
-              {day}
-            </div>
-          ))}
-        </div>
+        {/* Agenda-Liste */}
+        {dateKeys.length === 0 ? (
+          <div className="py-12 text-center">
+            <div className="text-4xl mb-3">🗓️</div>
+            <p className="text-gray-500 font-medium">Keine Trainings in diesem Monat</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {dateKeys.map((dateStr) => {
+              const date = parseISO(dateStr);
+              const daySlots = byDate.get(dateStr)!;
+              const today = isToday(date);
+              const past = isPast(date) && !today;
 
-        {/* Woche-Grid */}
-        <div className="grid grid-cols-7 gap-1">
-          {weekDays7.map((date, index) => (
-            <div
-              key={index}
-              className={getDayClasses(date)}
-              onClick={() => handleDayClick(date)}
-            >
-              {renderDayContent(date)}
-            </div>
-          ))}
-        </div>
+              return (
+                <div
+                  key={dateStr}
+                  className={`flex gap-3 rounded-2xl border p-3 transition-all ${
+                    today
+                      ? 'border-kaisho-blueLight bg-kaisho-blueIce/60 ring-1 ring-kaisho-blueLight/40'
+                      : 'border-gray-100 bg-white'
+                  } ${past ? 'opacity-60' : ''}`}
+                >
+                  {/* Datums-Badge */}
+                  <div
+                    className={`flex flex-col items-center justify-center w-14 flex-shrink-0 rounded-xl py-2 ${
+                      today ? 'bg-kaisho-blue text-white' : 'bg-gray-50 text-gray-700'
+                    }`}
+                  >
+                    <span className="text-[10px] font-bold uppercase tracking-wide">
+                      {format(date, 'EEE', { locale: de })}
+                    </span>
+                    <span className="text-xl font-bold leading-tight">{format(date, 'd')}</span>
+                  </div>
+
+                  {/* Trainings des Tages */}
+                  <div className="flex-1 min-w-0 space-y-2">
+                    {daySlots.map((slot, idx) => {
+                      const meta = getSlotMeta(slot);
+                      return (
+                        <button
+                          key={idx}
+                          onClick={() => handleDayClick(date)}
+                          className="w-full flex items-center gap-2.5 text-left rounded-xl bg-gray-50 hover:bg-kaisho-blueIce/70 active:scale-[0.99] transition-all p-2.5"
+                        >
+                          <div className={`w-1 self-stretch rounded-full ${meta.accent}`} />
+                          <div className="flex-1 min-w-0">
+                            <div className={`font-bold text-sm text-gray-800 ${slot.isCancelled ? 'line-through text-gray-400' : ''}`}>
+                              {slot.timeStart.slice(0, 5)}
+                              {slot.timeEnd && (
+                                <span className="font-normal text-gray-500"> – {slot.timeEnd.slice(0, 5)}</span>
+                              )}
+                            </div>
+                            {slot.name && (
+                              <div className="text-xs text-gray-600 font-medium truncate">{slot.name}</div>
+                            )}
+                          </div>
+                          <span className={`flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-full whitespace-nowrap ${meta.pill}`}>
+                            <span>{meta.icon}</span>
+                            {meta.label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Legende */}
         <div className="mt-4 flex flex-wrap gap-3 text-[10px] text-gray-500">

@@ -57,6 +57,7 @@ export function calculateTrainingSlotsForMonth(
         isExtra: false,
         isEvent: false,
         reason: cancelOverride?.reason || undefined,
+        name: td.name || undefined,
       });
     });
   });

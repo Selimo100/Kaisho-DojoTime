@@ -14,6 +14,7 @@ export interface TrainingDay {
   weekday: number; // 0 = Sonntag, 1 = Montag, ... 6 = Samstag
   time_start: string; // HH:MM format
   time_end: string | null; // HH:MM format
+  name?: string | null; // Optionaler Name des Trainings, z.B. "Kids-Training"
   is_active: boolean;
 }
 
@@ -43,6 +44,7 @@ export interface CreateTrainingDayInput {
   weekday: number;
   time_start: string;
   time_end?: string;
+  name?: string;
 }
 
 export interface Trainer {
@@ -101,6 +103,7 @@ export interface TrainingSlot {
   isExtra: boolean;
   isEvent: boolean; // Für reine Info-Events ohne Trainer
   reason?: string;
+  name?: string | null; // Optionaler Name des Trainings
 }
 
 export interface Admin {

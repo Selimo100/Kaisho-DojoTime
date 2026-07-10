@@ -5,7 +5,7 @@ import { WEEKDAY_NAMES } from '../utils/formatters';
 interface EditTrainingDayModalProps {
   trainingDay: TrainingDay;
   onClose: () => void;
-  onSave: (id: number, updates: { weekday: number; time_start: string; time_end?: string }) => Promise<void>;
+  onSave: (id: number, updates: { weekday: number; time_start: string; time_end?: string; name?: string | null }) => Promise<void>;
 }
 
 export default function EditTrainingDayModal({
@@ -16,6 +16,7 @@ export default function EditTrainingDayModal({
   const [weekday, setWeekday] = useState(trainingDay.weekday);
   const [timeStart, setTimeStart] = useState(trainingDay.time_start);
   const [timeEnd, setTimeEnd] = useState(trainingDay.time_end || '');
+  const [name, setName] = useState(trainingDay.name || '');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -35,6 +36,7 @@ export default function EditTrainingDayModal({
         weekday,
         time_start: timeStart,
         time_end: timeEnd || undefined,
+        name: name.trim() || null,
       });
       onClose();
     } catch (err) {
@@ -67,6 +69,20 @@ export default function EditTrainingDayModal({
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-white mb-2">
+              Name <span className="text-white/50 font-normal">(optional)</span>
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="z.B. Kids-Training, Wettkampfgruppe"
+              maxLength={60}
+              className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/30 rounded-xl text-white font-medium placeholder-white/40 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+            />
+          </div>
+
           <div>
             <label className="block text-sm font-semibold text-white mb-2">
               Wochentag *
