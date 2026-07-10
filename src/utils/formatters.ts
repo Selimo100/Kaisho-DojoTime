@@ -26,3 +26,17 @@ export const formatDate = (dateString: string): string => {
 export const getWeekdayName = (weekday: number): string => {
   return WEEKDAY_NAMES[weekday] || '';
 };
+
+/**
+ * Erzeugt anonymisierte Initialen aus einem Namen für die öffentliche Ansicht.
+ * "Selina Mogicato" -> "S.M." · "Selina" -> "S."
+ */
+export const getInitials = (name: string): string => {
+  const parts = name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2);
+  if (parts.length === 0) return '?';
+  return parts.map((p) => p.charAt(0).toUpperCase() + '.').join('');
+};

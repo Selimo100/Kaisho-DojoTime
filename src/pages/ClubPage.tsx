@@ -170,6 +170,22 @@ export default function ClubPage() {
               {club.name}
             </h1>
             <p className="text-gray-500 text-sm md:text-base">{club.city}</p>
+
+            {/* Öffentlicher Kalender – Hinweis + Link */}
+            <div className="mt-3 pt-3 border-t border-kaisho-greyLight flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs text-gray-400">
+                Öffentliche Ansicht zum Einbetten auf der Vereins-Website – Coaches nur mit Initialen.
+              </p>
+              <a
+                href={`/public/${club.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-kaisho-blue hover:text-kaisho-blueLight underline underline-offset-2 whitespace-nowrap"
+              >
+                <span aria-hidden="true">📅</span>
+                Öffentlicher Kalender
+              </a>
+            </div>
           </div>
         </div>
 
