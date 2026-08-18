@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import type { TrainingSlot, TrainingEntry } from '../types';
 import { useAuth } from '../context/AuthContext';
-import { createTrainingEntry, deleteTrainingEntry, deleteOverride, cancelScheduledTrainer } from '../lib/supabaseService';
+import { createTrainingEntry, deleteTrainingEntry, deleteOverride, cancelScheduledTrainer, getTrainersByClub } from '../lib/supabaseService';
 import CancelTrainingModal from './CancelTrainingModal';
 
 interface TrainingDayModalProps {
@@ -28,14 +28,28 @@ export default function TrainingDayModal({
   onAuthRequired,
 }: TrainingDayModalProps) {
   const { trainer, isAuthenticated } = useAuth();
-  const [selectedSlot, setSelectedSlot] = useState<TrainingSlot | null>(null);
+  // null = Auswahl entspricht dem gespeicherten Stand
+  const [draftSlotKeys, setDraftSlotKeys] = useState<string[] | null>(null);
+  const [saveState, setSaveState] = useState<'idle' | 'pending' | 'saving' | 'saved'>('idle');
   const [remark, setRemark] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
   const [isUncancelling, setIsUncancelling] = useState<number | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [slotToCancel, setSlotToCancel] = useState<TrainingSlot | null>(null);
+
+  // Admin: andere Trainer eintragen
+  const [showAdminAssign, setShowAdminAssign] = useState(false);
+  const [clubTrainers, setClubTrainers] = useState<{ id: string; name: string }[]>([]);
+  const [assignTrainerId, setAssignTrainerId] = useState('');
+  const [assignSlotKeys, setAssignSlotKeys] = useState<string[]>([]);
+  const [assignRemark, setAssignRemark] = useState('');
+  const [assignError, setAssignError] = useState<string | null>(null);
+  const [assignSuccess, setAssignSuccess] = useState<string | null>(null);
+  const [isAssigning, setIsAssigning] = useState(false);
+
+  const slotKey = (slot: TrainingSlot) =>
+    slot.isExtra ? `extra-${slot.overrideId}` : `day-${slot.trainingDayId}`;
 
   const handleCancelClick = (slot: TrainingSlot) => {
     setSlotToCancel(slot);
@@ -116,46 +130,203 @@ export default function TrainingDayModal({
     });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!trainer || !selectedSlot || isLoading) return;
+  // Finde den zugehörigen Slot eines Eintrags
+  const getSlotForEntry = (entry: TrainingEntry) =>
+    slots.find(s =>
+      entry.override_id ? s.overrideId === entry.override_id : s.trainingDayId === entry.training_day_id
+    );
 
+  // Einträge nach Trainingszeit sortieren
+  const sortedDateEntries = [...dateEntries].sort((a, b) => {
+    const timeA = getSlotForEntry(a)?.timeStart ?? '99:99';
+    const timeB = getSlotForEntry(b)?.timeStart ?? '99:99';
+    if (timeA !== timeB) return timeA.localeCompare(timeB);
+    return a.trainer_name.localeCompare(b.trainer_name);
+  });
+
+  // Trainings, für die eine Eintragung möglich ist
+  const selectableSlots = slots.filter((s) => !s.isCancelled);
+  // Gespeicherter Stand: Slots, für die der Trainer bereits eingetragen ist
+  const savedSlotKeys = selectableSlots.filter((s) => getTrainerEntryForSlot(s)).map(slotKey);
+  // Angezeigte Auswahl (Entwurf, solange noch nicht gespeichert)
+  const selectedSlotKeys = draftSlotKeys ?? savedSlotKeys;
+  const allSelected =
+    selectableSlots.length > 0 &&
+    selectableSlots.every((s) => selectedSlotKeys.includes(slotKey(s)));
+
+  const sameKeys = (a: string[], b: string[]) =>
+    a.length === b.length && a.every((k) => b.includes(k));
+
+  const toggleSlotSelection = (slot: TrainingSlot) => {
     setSubmitError(null);
+    const key = slotKey(slot);
+    const next = selectedSlotKeys.includes(key)
+      ? selectedSlotKeys.filter((k) => k !== key)
+      : [...selectedSlotKeys, key];
+    setDraftSlotKeys(next);
+    setSaveState('pending');
+  };
 
-    // Prüfe ob bereits eingetragen
-    const alreadyEntered = getTrainerEntryForSlot(selectedSlot);
-    
-    if (alreadyEntered) {
-      setSubmitError('Du bist bereits für dieses Training eingetragen!');
-      return;
+  const selectAll = () => {
+    setSubmitError(null);
+    setDraftSlotKeys(allSelected ? [] : selectableSlots.map(slotKey));
+    setSaveState('pending');
+  };
+
+  // Entwurf verwerfen, sobald der gespeicherte Stand ihn eingeholt hat
+  useEffect(() => {
+    if (draftSlotKeys && saveState !== 'pending' && sameKeys(draftSlotKeys, savedSlotKeys)) {
+      setDraftSlotKeys(null);
     }
+  });
 
-    setIsLoading(true);
-    try {
-      await createTrainingEntry({
-        club_id: clubId,
-        training_day_id: selectedSlot.isExtra ? null : selectedSlot.trainingDayId,
-        override_id: selectedSlot.isExtra ? selectedSlot.overrideId : undefined,
-        training_date: format(date, 'yyyy-MM-dd'),
-        trainer_id: trainer.id,
-        trainer_name: trainer.name,
-        remark: remark.trim() || undefined,
-      });
+  // Nach dem Speichern zurück in den Ruhezustand
+  useEffect(() => {
+    if (saveState !== 'saved') return;
+    const timer = setTimeout(() => {
+      setDraftSlotKeys(null);
+      setSaveState('idle');
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, [saveState]);
 
-      setRemark('');
-      setSelectedSlot(null);
-      onEntryAdded();
-    } catch (error: any) {
-      console.error('Error creating entry:', error);
-      // Prüfe ob es ein Duplicate Key Error ist
-      if (error?.code === '23505') {
-        setSubmitError('Du bist bereits für dieses Training eingetragen! Bitte lade die Seite neu.');
-      } else {
-        setSubmitError('Fehler beim Eintragen. Bitte versuche es erneut.');
+  // Autosave: kurz nach der letzten Auswahländerung speichern
+  const remarkRef = useRef(remark);
+  remarkRef.current = remark;
+
+  useEffect(() => {
+    if (!draftSlotKeys || saveState !== 'pending' || !trainer) return;
+
+    const target = draftSlotKeys;
+    const timer = setTimeout(async () => {
+      const toAdd = selectableSlots.filter(
+        (s) => target.includes(slotKey(s)) && !getTrainerEntryForSlot(s)
+      );
+      const toRemove = selectableSlots
+        .filter((s) => !target.includes(slotKey(s)))
+        .map((s) => getTrainerEntryForSlot(s))
+        .filter((entry): entry is TrainingEntry => !!entry && entry.id > 0);
+
+      if (toAdd.length === 0 && toRemove.length === 0) {
+        setSaveState('saved');
+        return;
       }
-    } finally {
-      setIsLoading(false);
+
+      setSaveState('saving');
+      setSubmitError(null);
+
+      const newRemark = remarkRef.current.trim() || undefined;
+      let failed = 0;
+      let duplicate = false;
+
+      for (const slot of toAdd) {
+        try {
+          await createTrainingEntry({
+            club_id: clubId,
+            training_day_id: slot.isExtra ? null : slot.trainingDayId,
+            override_id: slot.isExtra ? slot.overrideId : undefined,
+            training_date: format(date, 'yyyy-MM-dd'),
+            trainer_id: trainer.id,
+            trainer_name: trainer.name,
+            remark: newRemark,
+          });
+        } catch (error: any) {
+          console.error('Error creating entry:', error);
+          failed++;
+          if (error?.code === '23505') duplicate = true;
+        }
+      }
+
+      for (const entry of toRemove) {
+        try {
+          await deleteTrainingEntry(entry.id);
+        } catch (error) {
+          console.error('Error deleting entry:', error);
+          failed++;
+        }
+      }
+
+      if (failed === 0) {
+        setSaveState('saved');
+      } else {
+        setSaveState('idle');
+        setDraftSlotKeys(null);
+        setSubmitError(
+          duplicate
+            ? 'Du bist bereits für ein gewähltes Training eingetragen! Bitte lade die Seite neu.'
+            : 'Nicht alle Änderungen konnten gespeichert werden. Bitte versuche es erneut.'
+        );
+      }
+
+      onEntryAdded();
+    }, 700);
+
+    return () => clearTimeout(timer);
+  }, [draftSlotKeys, saveState, trainer]);
+
+  // Admin: Trainerliste des Clubs laden, sobald der Bereich geöffnet wird
+  useEffect(() => {
+    if (!showAdminAssign || !isAdmin || clubTrainers.length > 0) return;
+    getTrainersByClub(clubId)
+      .then((data) => setClubTrainers(data.map((t: any) => ({ id: t.id, name: t.name }))))
+      .catch((error) => {
+        console.error('Error loading trainers:', error);
+        setAssignError('Trainerliste konnte nicht geladen werden.');
+      });
+  }, [showAdminAssign, isAdmin, clubId]);
+
+  const toggleAssignSlot = (slot: TrainingSlot) => {
+    setAssignError(null);
+    setAssignSuccess(null);
+    const key = slotKey(slot);
+    setAssignSlotKeys((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+    );
+  };
+
+  const handleAssignTrainer = async () => {
+    const selected = clubTrainers.find((t) => t.id === assignTrainerId);
+    if (!selected || assignSlotKeys.length === 0 || isAssigning) return;
+
+    const targetSlots = selectableSlots.filter((s) => assignSlotKeys.includes(slotKey(s)));
+    setIsAssigning(true);
+    setAssignError(null);
+    setAssignSuccess(null);
+
+    let failed = 0;
+    for (const slot of targetSlots) {
+      try {
+        await createTrainingEntry({
+          club_id: clubId,
+          training_day_id: slot.isExtra ? null : slot.trainingDayId,
+          override_id: slot.isExtra ? slot.overrideId : undefined,
+          training_date: format(date, 'yyyy-MM-dd'),
+          trainer_id: selected.id,
+          trainer_name: selected.name,
+          remark: assignRemark.trim() || undefined,
+        });
+      } catch (error: any) {
+        console.error('Error assigning trainer:', error);
+        failed++;
+      }
     }
+
+    if (failed === 0) {
+      setAssignSuccess(
+        `${selected.name} für ${targetSlots.length} ${targetSlots.length === 1 ? 'Training' : 'Trainings'} eingetragen.`
+      );
+      setAssignSlotKeys([]);
+      setAssignRemark('');
+    } else {
+      setAssignError(
+        failed === targetSlots.length
+          ? 'Eintragen fehlgeschlagen. Eventuell ist der Trainer bereits eingetragen.'
+          : `${failed} von ${targetSlots.length} Trainings konnten nicht eingetragen werden.`
+      );
+    }
+
+    onEntryAdded();
+    setIsAssigning(false);
   };
 
   const handleUnregister = async (entryId: number) => {
@@ -215,7 +386,6 @@ export default function TrainingDayModal({
           {/* Trainingszeiten */}
           <div>
             <h3 className="font-semibold text-kaisho-blue mb-4 text-sm uppercase tracking-wider flex items-center gap-2">
-              <span className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">🏋️</span>
               Trainingszeiten
             </h3>
             <div className="space-y-3">
@@ -276,22 +446,22 @@ export default function TrainingDayModal({
                             <div className="flex gap-2 flex-wrap">
                               {slot.isCancelled && (
                                 <span className="inline-flex items-center gap-1 text-xs text-red-700 font-semibold bg-red-100 px-3 py-1.5 rounded-full">
-                                  <span>❌</span> Abgesagt
+                                  Abgesagt
                                 </span>
                               )}
                               {trainerEntry && !slot.isCancelled && (
                                 <span className="inline-flex items-center gap-1 text-xs text-emerald-700 font-semibold bg-emerald-100 px-3 py-1.5 rounded-full">
-                                  <span>✓</span> Eingetragen
+                                  Eingetragen
                                 </span>
                               )}
                               {hasNoTrainers && (
                                 <span className="inline-flex items-center gap-1 text-xs text-red-700 font-semibold bg-red-100 px-3 py-1.5 rounded-full animate-pulse">
-                                  <span>⚠️</span> Kein Trainer
+                                  Kein Trainer
                                 </span>
                               )}
                               {slot.isExtra && !slot.isCancelled && !trainerEntry && !hasNoTrainers && (
                                 <span className="inline-flex items-center gap-1 text-xs text-kaisho-blue font-semibold bg-kaisho-blueIce px-3 py-1.5 rounded-full">
-                                  <span>✨</span> Extra
+                                  Extra
                                 </span>
                               )}
                             </div>
@@ -328,10 +498,9 @@ export default function TrainingDayModal({
                               className="px-4 py-2 bg-orange-500/80 hover:bg-orange-600 text-white text-sm font-semibold rounded-xl transition-all duration-300 active:scale-95 shadow-lg disabled:opacity-50 flex items-center gap-2"
                             >
                               {isDeleting === trainerEntry.id ? (
-                                <span className="animate-spin">⏳</span>
+                                <span>...</span>
                               ) : (
                                 <>
-                                  <span>↩</span>
                                   <span className="hidden md:inline">Austragen</span>
                                 </>
                               )}
@@ -346,10 +515,9 @@ export default function TrainingDayModal({
                               className="px-4 py-2 bg-emerald-500/80 hover:bg-emerald-600 text-white text-sm font-semibold rounded-xl transition-all duration-300 active:scale-95 shadow-lg disabled:opacity-50 flex items-center gap-2"
                             >
                               {isUncancelling === slot.trainingDayId ? (
-                                <span className="animate-spin">⏳</span>
+                                <span>...</span>
                               ) : (
                                 <>
-                                  <span>↩</span>
                                   <span className="hidden md:inline">Absage aufheben</span>
                                   <span className="md:hidden">Aufheben</span>
                                 </>
@@ -379,21 +547,17 @@ export default function TrainingDayModal({
           {isAuthenticated && dateEntries.length > 0 && (
             <div>
               <h3 className="font-semibold text-kaisho-blue mb-4 text-sm uppercase tracking-wider flex items-center gap-2">
-                <span className="w-8 h-8 bg-kaisho-blueIce rounded-lg flex items-center justify-center">👥</span>
                 Eingetragene Trainer
                 <span className="ml-auto bg-kaisho-blueIce text-kaisho-blue px-3 py-1 rounded-full text-xs font-bold">
                   {dateEntries.length}
                 </span>
               </h3>
               <div className="grid gap-2">
-                {dateEntries.map((entry) => {
+                {sortedDateEntries.map((entry) => {
                   const isOwnEntry = trainer && entry.trainer_id === trainer.id;
                   const isScheduledEntry = entry.id < 0; // Virtuelle Einträge haben negative IDs
-                  // Finde den passenden Slot für diesen Eintrag
-                  const entrySlot = slots.find(s => 
-                    entry.override_id ? s.overrideId === entry.override_id : s.trainingDayId === entry.training_day_id
-                  );
-                  
+                  const entrySlot = getSlotForEntry(entry);
+
                   return (
                     <div
                       key={entry.id}
@@ -420,7 +584,7 @@ export default function TrainingDayModal({
                             <div className="font-semibold text-gray-800 flex items-center gap-2">
                               {entry.trainer_name}
                               {isScheduledEntry && (
-                                <span className="text-xs text-blue-600 font-medium">📅 Geplant</span>
+                                <span className="text-xs text-blue-600 font-medium">Geplant</span>
                               )}
                               {isOwnEntry && (
                                 <span className="text-xs text-emerald-600 font-medium">(Du)</span>
@@ -429,11 +593,10 @@ export default function TrainingDayModal({
                             {/* Zeige Trainingszeit */}
                             {entrySlot && (
                               <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
-                                <span>🕒</span>
                                 {entrySlot.timeStart.slice(0, 5)}
                                 {entrySlot.timeEnd && ` – ${entrySlot.timeEnd.slice(0, 5)}`}
                                 {entrySlot.isExtra && (
-                                  <span className="ml-1 text-purple-500">✨ Extra</span>
+                                  <span className="ml-1 text-purple-500">Extra</span>
                                 )}
                               </p>
                             )}
@@ -464,7 +627,6 @@ export default function TrainingDayModal({
                           >
                             {isDeleting === entry.id ? '...' : (
                               <>
-                                <span>↩</span>
                                 <span className="hidden md:inline">Austragen</span>
                               </>
                             )}
@@ -482,7 +644,6 @@ export default function TrainingDayModal({
           {!isAuthenticated && (
             <div className="p-5 bg-amber-50 border border-amber-200 rounded-2xl">
               <div className="flex items-start gap-3">
-                <span className="text-2xl">🔒</span>
                 <div>
                   <p className="font-semibold text-amber-800 mb-1">Datenschutz</p>
                   <p className="text-sm text-amber-700">
@@ -498,14 +659,12 @@ export default function TrainingDayModal({
           {isAuthenticated ? (
             <div className="border-t border-gray-200 pt-6">
               <h3 className="font-semibold text-kaisho-blue mb-4 text-sm uppercase tracking-wider flex items-center gap-2">
-                <span className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">✍️</span>
                 Eintragen
               </h3>
               
               {/* Check if all slots are cancelled */}
               {slots.every(slot => slot.isCancelled) ? (
                 <div className="p-5 bg-red-50 border border-red-200 rounded-2xl text-center">
-                  <span className="text-3xl mb-3 block">❌</span>
                   <p className="text-red-700 font-semibold">
                     Alle Trainings an diesem Tag wurden abgesagt.
                   </p>
@@ -514,63 +673,117 @@ export default function TrainingDayModal({
                   </p>
                 </div>
               ) : (
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-4">
                 {/* Fehlermeldung */}
                 {submitError && (
                   <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
                     <p className="text-red-700 font-medium text-sm flex items-center gap-2">
-                      <span>⚠️</span> {submitError}
+                      {submitError}
                     </p>
                   </div>
                 )}
                 
-                {/* Immer Trainingszeit-Auswahl anzeigen */}
+                {/* Mehrfachauswahl der Trainings */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Trainingszeit wählen *
-                  </label>
-                  <select
-                    value={selectedSlot ? (selectedSlot.isExtra ? `extra-${selectedSlot.overrideId}` : `day-${selectedSlot.trainingDayId}`) : ''}
-                    onChange={(e) => {
-                      setSubmitError(null); // Clear error on selection change
-                      const value = e.target.value;
-                      if (!value) {
-                        setSelectedSlot(null);
-                        return;
-                      }
-                      const idx = Number(value.split('-')[1]);
-                      const slot = slots.find(s => 
-                        value.startsWith('extra-') ? s.overrideId === idx : s.trainingDayId === idx
-                      );
-                      setSelectedSlot(slot || null);
-                    }}
-                    required
-                    className="w-full px-4 py-3.5 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 focus:ring-2 focus:ring-kaisho-blueLight focus:border-kaisho-blueLight transition-all duration-300 appearance-none cursor-pointer"
-                  >
-                    <option value="">Bitte Training wählen...</option>
-                    {slots.filter(s => !s.isCancelled).map((slot, idx) => {
+                  <div className="flex items-center justify-between mb-2 gap-3">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Trainings wählen
+                    </label>
+                    {selectableSlots.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={selectAll}
+                        className="text-xs font-semibold text-kaisho-blue hover:text-kaisho-blueLight transition-colors duration-200"
+                      >
+                        {allSelected ? 'Auswahl aufheben' : 'Alle auswählen'}
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    {selectableSlots.map((slot, idx) => {
                       const slotEntries = getEntriesForSlot(slot);
                       const alreadyRegistered = getTrainerEntryForSlot(slot);
+                      const key = slotKey(slot);
+                      const isSelected = selectedSlotKeys.includes(key);
+
                       return (
-                        <option 
-                          key={idx} 
-                          value={slot.isExtra ? `extra-${slot.overrideId}` : `day-${slot.trainingDayId}`}
-                          disabled={!!alreadyRegistered}
+                        <label
+                          key={idx}
+                          className={`flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-all duration-200 ${
+                            isSelected
+                              ? 'border-emerald-400 bg-emerald-50'
+                              : 'border-gray-300 bg-gray-50 hover:border-kaisho-blueLight hover:bg-kaisho-blueIce'
+                          }`}
                         >
-                          {slot.timeStart.slice(0, 5)}
-                          {slot.timeEnd && ` – ${slot.timeEnd.slice(0, 5)}`}
-                          {slot.isExtra && ' ✨ Extra-Training'}
-                          {` (✓ ${slotEntries.length} Trainer)`}
-                          {alreadyRegistered && ' - Bereits eingetragen'}
-                        </option>
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleSlotSelection(slot)}
+                            className="sr-only"
+                          />
+                          <span
+                            className={`w-5 h-5 flex-shrink-0 rounded-md border flex items-center justify-center transition-all duration-200 ${
+                              isSelected
+                                ? 'bg-emerald-500 border-emerald-500 text-white'
+                                : 'bg-white border-gray-300'
+                            }`}
+                          >
+                            {isSelected && (
+                              <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+                                <path
+                                  fillRule="evenodd"
+                                  d="M16.7 5.3a1 1 0 010 1.4l-7.5 7.5a1 1 0 01-1.4 0L3.3 9.7a1 1 0 111.4-1.4l3.8 3.8 6.8-6.8a1 1 0 011.4 0z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                            )}
+                          </span>
+
+                          <span className="flex-1 min-w-0">
+                            <span className="flex items-baseline gap-2 flex-wrap">
+                              <span className="font-semibold text-gray-800">
+                                {slot.timeStart.slice(0, 5)}
+                                {slot.timeEnd && ` – ${slot.timeEnd.slice(0, 5)}`}
+                              </span>
+                              {slot.name && (
+                                <span className="text-sm text-gray-600 truncate">{slot.name}</span>
+                              )}
+                              {slot.isExtra && (
+                                <span className="text-xs font-semibold text-kaisho-blue bg-kaisho-blueIce px-2 py-0.5 rounded-full">
+                                  Extra
+                                </span>
+                              )}
+                            </span>
+                            <span className="block text-xs text-gray-500 mt-0.5">
+                              {alreadyRegistered
+                                ? `Du bist eingetragen · ${slotEntries.length} Trainer`
+                                : `${slotEntries.length} Trainer eingetragen`}
+                            </span>
+                          </span>
+                        </label>
                       );
                     })}
-                  </select>
-                  {slots.filter(s => !s.isCancelled).length > 1 && (
-                    <p className="text-xs text-gray-500 mt-2">
-                      ⚠️ Wählen Sie das Training, für das Sie sich eintragen möchten
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3 mt-2 text-xs">
+                    <p className="text-gray-500">
+                      {selectedSlotKeys.length === 0
+                        ? 'Wähle ein oder mehrere Trainings aus – wird automatisch gespeichert.'
+                        : `${selectedSlotKeys.length} ${selectedSlotKeys.length === 1 ? 'Training' : 'Trainings'} ausgewählt`}
                     </p>
-                  )}
+                    <p
+                      className={`font-semibold whitespace-nowrap transition-opacity duration-300 ${
+                        saveState === 'idle' ? 'opacity-0' : 'opacity-100'
+                      } ${saveState === 'saved' ? 'text-emerald-600' : 'text-gray-500'}`}
+                    >
+                      {saveState === 'saving'
+                        ? 'Wird gespeichert...'
+                        : saveState === 'saved'
+                        ? 'Gespeichert'
+                        : 'Änderung wird gespeichert...'}
+                    </p>
+                  </div>
                 </div>
 
                 <div>
@@ -587,7 +800,7 @@ export default function TrainingDayModal({
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Bemerkung <span className="text-gray-400">(optional)</span>
+                    Bemerkung <span className="text-gray-400">(optional, vor der Auswahl erfassen)</span>
                   </label>
                   <textarea
                     value={remark}
@@ -598,25 +811,9 @@ export default function TrainingDayModal({
                   />
                 </div>
 
-                <button
-                  type="submit"
-                  disabled={isLoading || !selectedSlot}
-                  className="w-full py-4 px-4 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl transition-all duration-300 font-bold text-lg shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex items-center justify-center gap-2"
-                >
-                  {isLoading ? (
-                    <>
-                      <span className="animate-spin">⏳</span>
-                      Speichern...
-                    </>
-                  ) : (
-                    <>
-                      <span>✓</span>
-                      Eintragen
-                    </>
-                  )}
-                </button>
-              </form>
+              </div>
               )}
+
             </div>
           ) : (
             <div className="border-t border-gray-200 pt-6">
@@ -624,11 +821,176 @@ export default function TrainingDayModal({
                 onClick={handleEntryClick}
                 className="w-full py-4 px-4 bg-gradient-to-r from-kaisho-blue to-kaisho-blueLight hover:from-kaisho-blueLight hover:to-kaisho-blue text-white rounded-xl transition-all duration-300 font-bold text-lg shadow-lg active:scale-[0.98] flex items-center justify-center gap-2"
               >
-                <span>🔐</span>
                 Anmelden um sich einzutragen
               </button>
             </div>
           )}
+
+            {/* Admin: Trainer eintragen */}
+            {isAdmin && selectableSlots.length > 0 && (
+              <div className="mt-6 border border-gray-200 rounded-2xl overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setShowAdminAssign((v) => !v)}
+                  className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-gray-50 hover:bg-kaisho-blueIce transition-colors duration-200 text-left"
+                >
+                  <span>
+                    <span className="block text-sm font-semibold text-kaisho-blue">
+                      Trainer eintragen
+                    </span>
+                    <span className="block text-xs text-gray-500">
+                      Als Admin andere Trainer für dieses Datum eintragen
+                    </span>
+                  </span>
+                  <span className={`text-gray-400 transition-transform duration-200 ${showAdminAssign ? 'rotate-180' : ''}`}>
+                    <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                      <path
+                        fillRule="evenodd"
+                        d="M5.3 7.3a1 1 0 011.4 0L10 10.6l3.3-3.3a1 1 0 111.4 1.4l-4 4a1 1 0 01-1.4 0l-4-4a1 1 0 010-1.4z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </span>
+                </button>
+
+                {showAdminAssign && (
+                  <div className="p-4 space-y-4 border-t border-gray-200">
+                    {assignError && (
+                      <div className="p-3 bg-red-50 border border-red-200 rounded-xl">
+                        <p className="text-red-700 text-sm font-medium">{assignError}</p>
+                      </div>
+                    )}
+                    {assignSuccess && (
+                      <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+                        <p className="text-emerald-700 text-sm font-medium">{assignSuccess}</p>
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Trainer
+                      </label>
+                      <select
+                        value={assignTrainerId}
+                        onChange={(e) => {
+                          setAssignTrainerId(e.target.value);
+                          setAssignError(null);
+                          setAssignSuccess(null);
+                        }}
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 focus:ring-2 focus:ring-kaisho-blueLight focus:border-kaisho-blueLight transition-all duration-300 cursor-pointer"
+                      >
+                        <option value="">Trainer wählen...</option>
+                        {clubTrainers.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Trainings
+                      </label>
+                      <div className="space-y-2">
+                        {selectableSlots.map((slot, idx) => {
+                          const key = slotKey(slot);
+                          const isSelected = assignSlotKeys.includes(key);
+                          const alreadyIn = assignTrainerId
+                            ? getEntriesForSlot(slot).some((e) => e.trainer_id === assignTrainerId)
+                            : false;
+
+                          return (
+                            <label
+                              key={idx}
+                              className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-all duration-200 ${
+                                alreadyIn
+                                  ? 'border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed'
+                                  : isSelected
+                                  ? 'border-kaisho-blueLight bg-kaisho-blueIce cursor-pointer'
+                                  : 'border-gray-300 bg-gray-50 hover:border-kaisho-blueLight cursor-pointer'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSelected && !alreadyIn}
+                                disabled={alreadyIn}
+                                onChange={() => toggleAssignSlot(slot)}
+                                className="sr-only"
+                              />
+                              <span
+                                className={`w-5 h-5 flex-shrink-0 rounded-md border flex items-center justify-center transition-all duration-200 ${
+                                  isSelected && !alreadyIn
+                                    ? 'bg-kaisho-blue border-kaisho-blue text-white'
+                                    : 'bg-white border-gray-300'
+                                }`}
+                              >
+                                {isSelected && !alreadyIn && (
+                                  <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+                                    <path
+                                      fillRule="evenodd"
+                                      d="M16.7 5.3a1 1 0 010 1.4l-7.5 7.5a1 1 0 01-1.4 0L3.3 9.7a1 1 0 111.4-1.4l3.8 3.8 6.8-6.8a1 1 0 011.4 0z"
+                                      clipRule="evenodd"
+                                    />
+                                  </svg>
+                                )}
+                              </span>
+                              <span className="flex-1 min-w-0">
+                                <span className="flex items-baseline gap-2 flex-wrap">
+                                  <span className="font-semibold text-gray-800">
+                                    {slot.timeStart.slice(0, 5)}
+                                    {slot.timeEnd && ` – ${slot.timeEnd.slice(0, 5)}`}
+                                  </span>
+                                  {slot.name && (
+                                    <span className="text-sm text-gray-600 truncate">{slot.name}</span>
+                                  )}
+                                  {slot.isExtra && (
+                                    <span className="text-xs font-semibold text-kaisho-blue bg-white px-2 py-0.5 rounded-full">
+                                      Extra
+                                    </span>
+                                  )}
+                                </span>
+                                {alreadyIn && (
+                                  <span className="block text-xs text-gray-500 mt-0.5">
+                                    Bereits eingetragen
+                                  </span>
+                                )}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Bemerkung <span className="text-gray-400">(optional)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={assignRemark}
+                        onChange={(e) => setAssignRemark(e.target.value)}
+                        placeholder="z.B. Vertretung"
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-400 focus:ring-2 focus:ring-kaisho-blueLight focus:border-kaisho-blueLight transition-all duration-300"
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleAssignTrainer}
+                      disabled={isAssigning || !assignTrainerId || assignSlotKeys.length === 0}
+                      className="w-full py-3 px-4 bg-kaisho-blue hover:bg-kaisho-blueLight text-white rounded-xl transition-all duration-300 font-semibold shadow active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+                    >
+                      {isAssigning
+                        ? 'Wird eingetragen...'
+                        : assignSlotKeys.length > 1
+                        ? `Für ${assignSlotKeys.length} Trainings eintragen`
+                        : 'Trainer eintragen'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
         </div>
       </div>
 

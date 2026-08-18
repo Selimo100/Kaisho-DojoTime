@@ -340,6 +340,23 @@ export async function loginTrainer(email: string, password: string): Promise<any
   return data[0];
 }
 
+export async function resetTrainerPassword(
+  email: string,
+  clubId: string,
+  newPassword: string
+): Promise<void> {
+  const { error } = await supabase.rpc('reset_trainer_password', {
+    p_email: email,
+    p_club_id: clubId,
+    p_new_password: newPassword,
+  });
+
+  if (error) {
+    console.error('Error resetting trainer password:', error);
+    throw error;
+  }
+}
+
 export async function getTrainersByClub(clubId: string): Promise<any[]> {
   const { data, error } = await supabase
     .from('trainers')
