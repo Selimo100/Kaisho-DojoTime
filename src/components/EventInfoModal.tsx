@@ -85,7 +85,7 @@ export default function EventInfoModal({ event, onClose }: EventInfoModalProps) 
             onClick={onClose}
             className="w-full py-3 px-6 bg-sky-400 hover:bg-sky-500 text-white font-bold rounded-xl transition-all active:scale-95 shadow-lg"
           >
-            Schließen
+            Schliessen
           </button>
         </div>
       </div>

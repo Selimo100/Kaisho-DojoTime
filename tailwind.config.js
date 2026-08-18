@@ -21,8 +21,8 @@ export default {
           dark: "#0A0A0A",         // Haupt-Hintergrund (Dark Mode)
           darkPanel: "#121212",    // Panels / Cards
           black: "#0A0A0A",        // Starker Kontrast
-          white: "#FFFFFF",        // Reines Weiß
-          whiteSoft: "#F4F4F4",    // Leicht aufgehelltes Weiß
+          white: "#FFFFFF",        // Reines Weiss
+          whiteSoft: "#F4F4F4",    // Leicht aufgehelltes Weiss
           greyLight: "#D8D8D8",    // Linien / dezente UI-Elemente
 
           // --- Deine ursprünglichen Töne (angepasst & integriert) ---

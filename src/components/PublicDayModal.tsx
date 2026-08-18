@@ -132,7 +132,7 @@ export default function PublicDayModal({ date, slots, entries, onClose }: Public
             onClick={onClose}
             className="w-full py-3 px-6 bg-kaisho-blue hover:bg-kaisho-blueLight text-white font-bold rounded-xl transition-all active:scale-95 shadow-lg"
           >
-            Schließen
+            Schliessen
           </button>
         </div>
       </div>
