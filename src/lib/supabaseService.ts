@@ -415,9 +415,16 @@ export async function createOverride(input: {
   requires_trainers?: boolean;
   created_by?: string;
 }): Promise<any> {
+  const [data] = await createOverrides([input]);
+  return data;
+}
+
+export async function createOverrides(
+  inputs: Parameters<typeof createOverride>[0][]
+): Promise<any[]> {
   const { data, error } = await supabase
     .from('training_overrides')
-    .insert({
+    .insert(inputs.map((input) => ({
       club_id: input.club_id,
       training_day_id: input.training_day_id || null,
       override_date: input.override_date,
@@ -427,16 +434,15 @@ export async function createOverride(input: {
       reason: input.reason || null,
       requires_trainers: input.requires_trainers !== undefined ? input.requires_trainers : true,
       created_by: input.created_by || null,
-    })
-    .select()
-    .single();
+    })))
+    .select();
 
   if (error) {
-    console.error('Error creating override:', error);
+    console.error('Error creating overrides:', error);
     throw error;
   }
 
-  return data;
+  return data || [];
 }
 
 export async function deleteOverride(id: number): Promise<void> {

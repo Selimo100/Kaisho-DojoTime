@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { format } from 'date-fns';
-import { createOverride } from '../lib/supabaseService';
+import { eachDayOfInterval, format, parseISO } from 'date-fns';
+import { createOverrides } from '../lib/supabaseService';
 
 interface QuickEventModalProps {
   clubId: string;
@@ -16,6 +16,7 @@ export default function QuickEventModal({
   onSuccess,
 }: QuickEventModalProps) {
   const [selectedDate, setSelectedDate] = useState(format(initialDate, 'yyyy-MM-dd'));
+  const [endDate, setEndDate] = useState(format(initialDate, 'yyyy-MM-dd'));
   const [timeStart, setTimeStart] = useState('18:00');
   const [timeEnd, setTimeEnd] = useState('19:30');
   const [reason, setReason] = useState('');
@@ -25,8 +26,13 @@ export default function QuickEventModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!selectedDate || !timeStart || !reason.trim()) {
+    if (!selectedDate || !endDate || !timeStart || !reason.trim()) {
       setError('Bitte füllen Sie alle Pflichtfelder aus.');
+      return;
+    }
+
+    if (endDate < selectedDate) {
+      setError('Das Enddatum darf nicht vor dem Startdatum liegen.');
       return;
     }
 
@@ -34,15 +40,19 @@ export default function QuickEventModal({
     setError('');
 
     try {
-      await createOverride({
+      const eventDates = eachDayOfInterval({
+        start: parseISO(selectedDate),
+        end: parseISO(endDate),
+      });
+      await createOverrides(eventDates.map((eventDate) => ({
         club_id: clubId,
-        override_date: selectedDate,
+        override_date: format(eventDate, 'yyyy-MM-dd'),
         action: 'extra',
         time_start: timeStart,
         time_end: timeEnd || undefined,
         reason: reason.trim(),
         requires_trainers: false,
-      });
+      })));
 
       onSuccess();
       onClose();
@@ -71,7 +81,7 @@ export default function QuickEventModal({
               <span>Event erstellen</span>
             </h2>
             <p className="text-white/80 text-sm mt-1">
-              Erstelle ein einmaliges Event
+              Erstelle ein ein- oder mehrtägiges Event
             </p>
           </div>
           <button
@@ -90,19 +100,34 @@ export default function QuickEventModal({
             </div>
           )}
 
-          {/* Date Selection */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Datum *
-            </label>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              required
-              min={format(new Date(), 'yyyy-MM-dd')}
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 font-medium focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
-            />
+          {/* Date Range */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Von *
+              </label>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                required
+                min={format(new Date(), 'yyyy-MM-dd')}
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 font-medium focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Bis *
+              </label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                required
+                min={selectedDate || format(new Date(), 'yyyy-MM-dd')}
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 font-medium focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+              />
+            </div>
           </div>
 
           {/* Event Name/Reason */}
