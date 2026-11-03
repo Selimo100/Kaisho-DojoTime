@@ -1,14 +1,29 @@
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { deleteOverride } from '../lib/supabaseService';
 import type { TrainingSlot } from '../types';
 
 interface EventInfoModalProps {
   event: TrainingSlot;
+  isAdmin?: boolean;
   onClose: () => void;
+  onDeleted?: () => void;
 }
 
-export default function EventInfoModal({ event, onClose }: EventInfoModalProps) {
+export default function EventInfoModal({ event, isAdmin = false, onClose, onDeleted }: EventInfoModalProps) {
   const eventDate = new Date(event.date);
+
+  const handleDelete = async () => {
+    if (!event.overrideId || !confirm('Dieses Event wirklich löschen?')) return;
+
+    try {
+      await deleteOverride(event.overrideId);
+      onDeleted?.();
+      onClose();
+    } catch (error) {
+      console.error('Error deleting event:', error);
+    }
+  };
 
   return (
     <div 
@@ -80,13 +95,22 @@ export default function EventInfoModal({ event, onClose }: EventInfoModalProps) 
             </div>
           </div>
 
-          {/* Close Button */}
-          <button
-            onClick={onClose}
-            className="w-full py-3 px-6 bg-sky-400 hover:bg-sky-500 text-white font-bold rounded-xl transition-all active:scale-95 shadow-lg"
-          >
-            Schliessen
-          </button>
+          <div className="flex gap-3">
+            {isAdmin && (
+              <button
+                onClick={handleDelete}
+                className="flex-1 py-3 px-6 bg-red-50 hover:bg-red-100 text-red-700 font-bold rounded-xl transition-all active:scale-95 border border-red-200"
+              >
+                Event löschen
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="flex-1 py-3 px-6 bg-sky-400 hover:bg-sky-500 text-white font-bold rounded-xl transition-all active:scale-95 shadow-lg"
+            >
+              Schliessen
+            </button>
+          </div>
         </div>
       </div>
     </div>

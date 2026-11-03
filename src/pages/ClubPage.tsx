@@ -394,7 +394,9 @@ export default function ClubPage() {
       {selectedEvent && (
         <EventInfoModal
           event={selectedEvent}
+          isAdmin={!!(admin && canAdminManageClub())}
           onClose={() => setSelectedEvent(null)}
+          onDeleted={handleRefreshTrainingDays}
         />
       )}
     </div>
